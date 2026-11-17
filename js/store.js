@@ -7,7 +7,8 @@ const defaults = () => ({
   tasbeeh: { sel: 'istighfar', ti: 0, count: 0 },
   settings: { khushu: false, vibrate: true, fs: 1, name: '', loc: null },
   best: 0,                        // longest streak
-  circle: null                    // { code, pending, mine:{date:n} }
+  circle: null,                   // { code, pending, mine:{date:n} }
+  hifz: null                      // Quran memorization (see quran.js)
 });
 
 let state = defaults();
@@ -46,7 +47,7 @@ export function activity(key) {
   const d = state.days[key];
   if (!d) return 0;
   const adhkarTaps = Object.values(d.m).reduce((a, b) => a + b, 0) + Object.values(d.e).reduce((a, b) => a + b, 0);
-  return d.t + adhkarTaps;
+  return d.t + adhkarTaps + (d.q || 0) * 5;
 }
 
 export const isActive = key => activity(key) > 0;

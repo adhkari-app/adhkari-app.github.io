@@ -2,6 +2,7 @@ import * as store from './store.js';
 import { adhkarFor, TASBEEH, VERSES } from './data.js';
 import { currentPeriod, fmtTime } from './sun.js';
 import * as circle from './challenge.js';
+import * as Q from './quran.js';
 
 const s = store.load();
 const app = document.getElementById('app');
@@ -29,6 +30,14 @@ const I = {
   eyeOff: svg('<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'),
   pin: svg('<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'),
   gear: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+  quran: svg('<path d="M2 5.5C5 4.5 9 4.5 12 6.5c3-2 7-2 10-1V19c-3-1-7-1-10 1-3-2-7-2-10-1z"/><path d="M12 6.5V20"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>', 'stroke-width="2"'),
+  search: svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'),
+  mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+  play: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  pause: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>',
+  prevR: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M7 6v12l8.5-6z"/><rect x="16.8" y="6" width="2.2" height="12" rx="1"/></svg>',
+  nextL: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M17 6v12l-8.5-6z"/><rect x="5" y="6" width="2.2" height="12" rx="1"/></svg>',
   octa: `<svg aria-hidden="true" viewBox="0 0 56 56" width="56" height="56"><g fill="none" stroke="#D9B26A" stroke-width="1.5"><rect x="12" y="12" width="32" height="32"/><rect x="12" y="12" width="32" height="32" transform="rotate(45 28 28)"/></g></svg>`
 };
 
@@ -90,11 +99,11 @@ function geolocate() {
 
 /* ---------------- Nav ---------------- */
 const NAV = [
-  ['home', 'الرئيسية', I.home], ['tasbeeh', 'السبحة', I.beads], ['adhkar', 'الأذكار', I.book],
-  ['circle', 'الحلقات', I.users], ['stats', 'إنجازي', I.chart]
+  ['home', 'الرئيسية', I.home, []], ['adhkar', 'الأذكار', I.moon, []], ['tasbeeh', 'السبحة', I.beads, []],
+  ['quran', 'القرآن', I.quran, ['surahs', 'surah', 'learn', 'test', 'review']], ['stats', 'إنجازي', I.chart, []]
 ];
-const navHTML = cur => `<nav class="nav" aria-label="التنقل الرئيسي">${NAV.map(([k, l, ic]) =>
-  `<a href="#/${k}" ${k === cur ? 'aria-current="page"' : ''}><span class="bar"></span>${ic}<span>${l}</span></a>`).join('')}</nav>`;
+const navHTML = cur => `<nav class="nav" aria-label="التنقل الرئيسي">${NAV.map(([k, l, ic, subs]) =>
+  `<a href="#/${k}" ${k === cur || subs.includes(cur) ? 'aria-current="page"' : ''}><span class="bar"></span>${ic}<span>${l}</span></a>`).join('')}</nav>`;
 
 /* ================= HOME ================= */
 const Home = {
@@ -194,15 +203,34 @@ const Home = {
         <span style="font-size:13px;color:var(--hero-muted)">انقر في أي مكان · اهتزاز عند كل ${TARGETS[s.tasbeeh.ti]}</span></span>
         <span style="color:var(--gold);display:flex">${I.left.replace('<svg', '<svg width="20" height="20"')}</span>
       </a>
+      ${quranCard()}
       ${circleCard}
     </main>`;
   },
   mount(root) {
     root.querySelector('[data-act="loc"]')?.addEventListener('click', geolocate);
+    if (!Q.ready()) Q.ensureData().then(() => { if (parse().name === 'home') render(); }).catch(() => {});
     this.timer = setInterval(() => render(), 60000);
   },
   unmount() { clearInterval(this.timer); }
 };
+
+function quranCard() {
+  const q = Q.summary();
+  const arrow = I.left.replace('<svg', '<svg width="20" height="20"');
+  if (!q || !q.plan) {
+    return `<a class="card stat-card quran-card" href="#/quran" style="flex-direction:row;align-items:center;gap:14px">
+      <span class="now-icon">${I.quran}</span>
+      <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">زاوية تحفيظ القرآن</b>
+      <span class="muted" style="font-size:13px">تكرار مع القارئ، تسميع، ومراجعة ذكية</span></span>${arrow}</a>`;
+  }
+  const left = Math.max(0, q.goal - q.newToday);
+  const sub = [left && q.next ? `حفظ ${left} ${left <= 10 && left > 2 ? 'آيات' : 'آية'} من ${q.next.name}` : 'أتممت حفظ اليوم ✓', q.due ? `مراجعة ${q.due}` : 'لا مراجعة مستحقة'].join(' · ');
+  return `<a class="card stat-card quran-card" href="#/quran" style="flex-direction:row;align-items:center;gap:14px">
+    <span class="now-icon">${I.quran}</span>
+    <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">وردك من القرآن</b>
+    <span class="muted" style="font-size:13px">${sub}</span></span>${arrow}</a>`;
+}
 
 function daysLeftLabel(endsAtMs) {
   const left = Math.ceil((endsAtMs - Date.now()) / 86400000);
@@ -651,6 +679,8 @@ const Stats = {
         <div class="card tile"><b>${fmt(store.day().t)}</b><span>تسبيحات اليوم</span></div>
         <div class="card tile"><b dir="ltr" style="text-align:right">${mDays} / ${now.getDate()}</b><span>أيام أذكار الصباح</span></div>
         <div class="card tile"><b dir="ltr" style="text-align:right">${eDays} / ${now.getDate()}</b><span>أيام أذكار المساء</span></div>
+        <div class="card tile"><b>${fmt(Object.keys((s.hifz && s.hifz.items) || {}).length)}</b><span>آيات محفوظة</span></div>
+        <div class="card tile"><b>${fmt(store.day().q || 0)}</b><span>آيات سمّعتها اليوم</span></div>
       </div>
 
       <section class="card" id="settings" style="padding:4px 16px">
@@ -668,7 +698,7 @@ const Stats = {
         <div class="setting"><span class="lbl">مسح كل البيانات<small>العدّادات والسلاسل والإعدادات</small></span>
           <button class="btn ghost sm" data-act="wipe">مسح</button></div>
       </section>
-      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.0 · يعمل بدون إنترنت</p>
+      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.1 · يعمل بدون إنترنت<br>نص المصحف: الرسم العثماني برواية حفص (QuranEnc) · الصوت: EveryAyah عبر Islamic Network</p>
     </main>`;
   },
   mount(root, params) {
@@ -697,8 +727,10 @@ const Stats = {
 };
 
 /* ================= Router ================= */
-const ROUTES = { home: Home, tasbeeh: Tasbeeh, adhkar: Adhkar, circle: Circle, stats: Stats };
+const ROUTES = { home: Home, tasbeeh: Tasbeeh, adhkar: Adhkar, circle: Circle, stats: Stats,
+  quran: Q.QuranHome, surahs: Q.Surahs, surah: Q.Surah, learn: Q.Learn, test: Q.Test, review: Q.Review };
 let current = null;
+let lastRendered = '';
 
 function parse() {
   const h = location.hash.replace(/^#\/?/, '');
@@ -710,7 +742,8 @@ function render() {
   const { name, params } = parse();
   if (current && current.unmount) current.unmount();
   current = ROUTES[name];
-  app.innerHTML = `<div class="screen">${current.html(params)}</div>${navHTML(name)}`;
+  app.innerHTML = `<div class="screen${name !== lastRendered ? ' enter' : ''}">${current.html(params)}</div>${navHTML(name)}`;
+  lastRendered = name;
   current.mount && current.mount(app, params);
 }
 
@@ -722,6 +755,7 @@ window.addEventListener('hashchange', () => {
   lastRoute = r;
 });
 
+Q.initQuran({ I, esc, toast, vibrate, render, fmt });
 applyTheme();
 lastRoute = parse().name;
 render();
