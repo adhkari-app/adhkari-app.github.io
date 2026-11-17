@@ -1,6 +1,7 @@
 import * as store from './store.js';
 import { adhkarFor, TASBEEH, VERSES } from './data.js';
-import { currentPeriod, fmtTime } from './sun.js';
+import { currentPeriod, fmtTime, sunTimes } from './sun.js';
+import * as FX from './fx.js';
 import * as circle from './challenge.js';
 import * as Q from './quran.js';
 
@@ -188,14 +189,14 @@ const Home = {
       </div>
       <p class="verse">﴿${verse.text}﴾<small>${verse.ref}</small></p>
     </header>
-    <main class="pad overlap stack">
+    <main class="pad overlap stack stagger">
       <section class="card raised stack" aria-live="polite">${nowCard}</section>
       ${s.settings.loc ? '' : `<button class="loc-hint" data-act="loc">${I.pin}<span>الأوقات محسوبة لغزة. اضغط لتحديد موقعك وضبط أوقات الأذكار بدقة.</span></button>`}
       <div class="grid2">
-        <a class="card stat-card" href="#/stats"><span class="lbl">${I.flame}سلسلة الأيام</span>
-          ${(() => { const n = store.streak(); return `<span><span class="big-num">${n}</span><span class="unit">${streakUnit(n)}</span></span>`; })()}</a>
+        <a class="card stat-card" href="#/stats"><span class="lbl flicker">${I.flame}سلسلة الأيام</span>
+          ${(() => { const n = store.streak(); return `<span><span class="big-num" data-countup="${n}">${n}</span><span class="unit">${streakUnit(n)}</span></span>`; })()}</a>
         <a class="card stat-card" href="#/stats"><span class="lbl">${I.star}استغفار اليوم</span>
-          <span><span class="big-num">${fmt(d.i)}</span><span class="unit">مرة</span></span></a>
+          <span><span class="big-num" data-countup="${d.i}">${fmt(d.i)}</span><span class="unit">مرة</span></span></a>
       </div>
       <a class="tasbeeh-link" href="#/tasbeeh">
         <span class="mini-star">${I.octa}<span style="position:relative">${TARGETS[s.tasbeeh.ti]}</span></span>
@@ -294,7 +295,7 @@ const Tasbeeh = {
     root.querySelector('[data-el="prog"]').setAttribute('stroke-dashoffset', v.offset);
     root.querySelector('[data-el="total"]').textContent = fmt(store.day().t);
   },
-  tap(root) {
+  tap(root, e) {
     const o = this.opt();
     const d = store.day();
     s.tasbeeh.count++;
@@ -303,15 +304,24 @@ const Tasbeeh = {
     store.save();
     const t = TARGETS[s.tasbeeh.ti];
     const zone = root.querySelector('.tapzone');
+    const ringEl = root.querySelector('.ring-wrap');
+    const rr = ringEl.getBoundingClientRect();
+    const px = e && e.clientX ? e.clientX : rr.left + rr.width / 2, py = e && e.clientY ? e.clientY : rr.top + rr.height / 2;
+    FX.floatText(px, py - 10, '+1');
+    if (FX.motionOK()) {
+      const w = document.createElement('span'); w.className = 'wave'; ringEl.appendChild(w); setTimeout(() => w.remove(), 700);
+    }
     if (s.tasbeeh.count % t === 0) {
       vibrate([60, 40, 60]);
       zone.classList.remove('pulse'); void zone.offsetWidth; zone.classList.add('pulse');
+      FX.burst(rr.left + rr.width / 2, rr.top + rr.height / 2, { n: 44, power: 8, size: 6 });
       toast(`أتممت ${t} ✓ — بارك الله فيك`);
     } else {
       vibrate(12);
-      zone.classList.remove('bump'); void zone.offsetWidth; zone.classList.add('bump');
     }
     this.update(root);
+    const cEl = root.querySelector('[data-el="count"]');
+    cEl.classList.remove('roll'); void cEl.offsetWidth; cEl.classList.add('roll');
   },
   mount(root, params) {
     if (params.get('d')) {
@@ -321,7 +331,7 @@ const Tasbeeh = {
         s.tasbeeh.sel = want; s.tasbeeh.count = 0; store.save(); render(); return;
       }
     }
-    root.querySelector('[data-act="tap"]').addEventListener('click', () => this.tap(root));
+    root.querySelector('[data-act="tap"]').addEventListener('click', e => this.tap(root, e));
     root.querySelectorAll('[data-sel]').forEach(b => b.addEventListener('click', () => {
       if (s.tasbeeh.sel === b.dataset.sel) return;
       s.tasbeeh.sel = b.dataset.sel; s.tasbeeh.count = 0; store.save(); render();
@@ -403,7 +413,7 @@ const Adhkar = {
         <span>${doneN} من ${list.length}</span>
       </div>
     </header>
-    <main class="ad-list">
+    <main class="ad-list stagger">
       ${doneN === list.length ? `<div class="card done-banner">${I.check.replace('<svg', '<svg width="28" height="28" style="color:var(--gold-ink)"')}<b>أتممت ${title}</b><span class="muted" style="font-size:14px">تقبّل الله منك</span></div>` : ''}
       ${cards}
       <button class="btn ghost sm" data-act="reset-period" style="margin-top:8px">${I.reset.replace('<svg', '<svg width="18" height="18"')}<span>إعادة ${title} من البداية</span></button>
@@ -431,7 +441,8 @@ const Adhkar = {
         if (all) { if (p === 'morning') d.md = true; else d.ed = true; }
         store.save();
         vibrate([40, 30, 40]);
-        if (all) toast('تقبّل الله ✓');
+        FX.burstAt(btn, { n: 22, power: 6 });
+        if (all) setTimeout(() => FX.celebrate(`أتممت ${p === 'morning' ? 'أذكار الصباح' : 'أذكار المساء'}`, 'تقبّل الله منك، وجعلها في ميزان حسناتك'), 350);
         const nextIdx = list.findIndex(a => (prog[a.id] || 0) < a.count);
         render();
         if (nextIdx >= 0) {
@@ -441,6 +452,7 @@ const Adhkar = {
       } else {
         store.save();
         vibrate(12);
+        { const br = btn.getBoundingClientRect(); FX.floatText(br.left + 40, br.top, '+1'); }
         btn.querySelector('.n').textContent = `${n} / ${count}`;
         const bar = btn.parentElement.querySelector('.progress > span');
         if (bar) bar.style.width = `${n / count * 100}%`;
@@ -639,7 +651,7 @@ const Stats = {
       if (dt > t0) { heat += '<span class="future"></span>'; continue; }
       const a = store.activity(store.dateKey(dt));
       const lv = a === 0 ? 0 : a < 33 ? 1 : a < 100 ? 2 : a < 300 ? 3 : 4;
-      heat += `<span class="l${lv}" title="${store.dateKey(dt)}: ${a}"></span>`;
+      heat += `<span class="l${lv}" style="--i:${i}" title="${store.dateKey(dt)}: ${a}"></span>`;
     }
 
     let monthIst = 0, mDays = 0, eDays = 0;
@@ -656,12 +668,12 @@ const Stats = {
       <h1>إنجازي</h1>
       <span class="muted" style="font-size:13px">«أحبُّ الأعمال إلى الله أدومُها وإن قلّ» — متفق عليه</span>
     </header>
-    <main class="pad stack" style="margin-top:12px">
+    <main class="pad stack stagger" style="margin-top:12px">
       <section class="circle-hero pattern">
         <div class="row" style="gap:14px">
-          <span class="now-icon" style="width:56px;height:56px;background:rgba(217,178,106,.16);color:var(--gold)">${I.flame}</span>
+          <span class="now-icon flicker" style="width:56px;height:56px;background:rgba(217,178,106,.16);color:var(--gold)">${I.flame}</span>
           <div style="display:flex;flex-direction:column">
-            <span><span style="font-size:44px;font-weight:700;line-height:1.1">${st}</span> <span style="font-size:16px;font-weight:600">${streakUnit(st)}</span></span>
+            <span><span style="font-size:44px;font-weight:700;line-height:1.1" data-countup="${st}">${st}</span> <span style="font-size:16px;font-weight:600">${streakUnit(st)}</span></span>
             <span style="font-size:13px;color:var(--hero-muted)">أطول سلسلة لك: ${s.best ? dayWord(s.best) : 'ابدأ اليوم'}</span>
           </div>
         </div>
@@ -675,8 +687,8 @@ const Stats = {
       </section>
 
       <div class="grid2" style="gap:10px">
-        <div class="card tile"><b>${fmt(monthIst)}</b><span>استغفار هذا الشهر</span></div>
-        <div class="card tile"><b>${fmt(store.day().t)}</b><span>تسبيحات اليوم</span></div>
+        <div class="card tile"><b data-countup="${monthIst}">${fmt(monthIst)}</b><span>استغفار هذا الشهر</span></div>
+        <div class="card tile"><b data-countup="${store.day().t}">${fmt(store.day().t)}</b><span>تسبيحات اليوم</span></div>
         <div class="card tile"><b dir="ltr" style="text-align:right">${mDays} / ${now.getDate()}</b><span>أيام أذكار الصباح</span></div>
         <div class="card tile"><b dir="ltr" style="text-align:right">${eDays} / ${now.getDate()}</b><span>أيام أذكار المساء</span></div>
         <div class="card tile"><b>${fmt(Object.keys((s.hifz && s.hifz.items) || {}).length)}</b><span>آيات محفوظة</span></div>
@@ -698,7 +710,7 @@ const Stats = {
         <div class="setting"><span class="lbl">مسح كل البيانات<small>العدّادات والسلاسل والإعدادات</small></span>
           <button class="btn ghost sm" data-act="wipe">مسح</button></div>
       </section>
-      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.1 · يعمل بدون إنترنت<br>نص المصحف: الرسم العثماني برواية حفص (QuranEnc) · الصوت: EveryAyah عبر Islamic Network</p>
+      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.2 · يعمل بدون إنترنت<br>نص المصحف: الرسم العثماني برواية حفص (QuranEnc) · الصوت: EveryAyah عبر Islamic Network</p>
     </main>`;
   },
   mount(root, params) {
@@ -742,9 +754,22 @@ function render() {
   const { name, params } = parse();
   if (current && current.unmount) current.unmount();
   current = ROUTES[name];
-  app.innerHTML = `<div class="screen${name !== lastRendered ? ' enter' : ''}">${current.html(params)}</div>${navHTML(name)}`;
+  const tc = name !== lastRendered ? FX.transitionClass(lastRendered, name) : '';
+  app.innerHTML = `<div class="screen ${tc}">${current.html(params)}</div>${navHTML(name)}`;
   lastRendered = name;
   current.mount && current.mount(app, params);
+  decorate(!!tc);
+}
+
+function decorate(entering) {
+  const hero = app.querySelector('.hero, .ad-hero');
+  if (hero && !hero.querySelector('.sky-layer')) {
+    const L = store.loc(), now = new Date();
+    let t = null; try { t = sunTimes(now, L.lat, L.lng); } catch (e) {}
+    FX.ambience(hero, FX.skyFor(now, t));
+  }
+  if (entering) FX.countUp(app);
+  else app.querySelectorAll('[data-countup]').forEach(el => { el.textContent = Number(el.dataset.countup).toLocaleString('en-US'); });
 }
 
 let lastRoute = '';
@@ -756,6 +781,9 @@ window.addEventListener('hashchange', () => {
 });
 
 Q.initQuran({ I, esc, toast, vibrate, render, fmt });
+FX.splash();
+FX.initRipples();
+FX.initParallax();
 applyTheme();
 lastRoute = parse().name;
 render();

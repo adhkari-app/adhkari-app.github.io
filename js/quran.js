@@ -1,6 +1,7 @@
 // زاوية التحفيظ — Quran memorization corner
 // Text: Uthmani (Hafs) from quran-json (QuranEnc). Audio: cdn.islamic.network (EveryAyah recordings).
 import * as store from './store.js';
+import * as FX from './fx.js';
 
 let ctx = null; // { I, esc, toast, vibrate, render, fmt }
 export function initQuran(c) { ctx = c; }
@@ -323,7 +324,7 @@ export const QuranHome = {
         </section>`;
       }
 
-      const cells = js.map(x => `<a class="juz l${x.lv}" href="#/surahs?j=${x.j}" aria-label="الجزء ${x.j}: ${x.mem} من ${x.total} آية محفوظة">${x.j}</a>`).join('');
+      const cells = js.map((x, i) => `<a class="juz l${x.lv}" style="--i:${i}" href="#/surahs?j=${x.j}" aria-label="الجزء ${x.j}: ${x.mem} من ${x.total} آية محفوظة">${x.j}</a>`).join('');
       return `
       <header class="hero pattern lux" style="padding-bottom:70px">
         <div class="row between" style="align-items:flex-start;gap:12px">
@@ -332,12 +333,12 @@ export const QuranHome = {
             <h1>حفظي</h1>
             <span class="date">«خيركم من تعلّم القرآن وعلّمه» — البخاري</span>
           </div>
-          <div class="badge-box"><b>${ctx.fmt(memCount)}</b><span>آية محفوظة</span></div>
+          <div class="badge-box"><b data-countup="${memCount}">${ctx.fmt(memCount)}</b><span>آية محفوظة</span></div>
         </div>
         <div class="row" style="margin-top:16px"><div class="progress hero-prog" style="flex:1"><span style="width:${Math.max(pct, memCount ? 1 : 0)}%"></span></div>
           <span style="font-size:12px;color:var(--hero-muted)">${pct < 10 && pct > 0 ? pct.toFixed(1) : Math.round(pct)}% من المصحف${fullJuz ? ` · ${fullJuz} ${fullJuz === 1 ? 'جزء' : fullJuz === 2 ? 'جزءان' : fullJuz <= 10 ? 'أجزاء' : 'جزءاً'}` : ''}</span></div>
       </header>
-      <main class="pad overlap stack" style="margin-top:-48px">
+      <main class="pad overlap stack stagger" style="margin-top:-48px">
         ${wird}
         <section class="card stack" style="gap:12px">
           <div class="row between"><h2 style="font-size:15px">خريطة الحفظ</h2><a href="#/surahs" style="font-size:13px;font-weight:600;text-decoration:none">فهرس السور</a></div>
@@ -352,8 +353,8 @@ export const QuranHome = {
   },
   mount(root, params) {
     if (!ready()) return;
-    if (params.get('done') === 'new') ctx.toast('أتممت حفظ اليوم — بارك الله فيك ✓');
-    if (params.get('done') === 'review') ctx.toast('أتممت المراجعة — تقبّل الله ✓');
+    if (params.get('done') === 'new') setTimeout(() => FX.celebrate('أتممت ورد الحفظ اليوم', 'زادك الله حفظاً وفهماً، وجعل القرآن ربيع قلبك'), 300);
+    if (params.get('done') === 'review') setTimeout(() => FX.celebrate('أتممت المراجعة', 'ثبّت الله حفظك — تقبّل الله منك'), 300);
     if (params.get('done')) try { history.replaceState(null, '', '#/quran'); } catch (e) {}
     const h = H();
     root.querySelectorAll('[data-plan]').forEach(b => b.addEventListener('click', () => {
@@ -604,7 +605,7 @@ export const Test = {
       const total = words.length;
       const done = T.revealed >= total;
       const wHTML = words.map((w, i) => {
-        if (i < T.revealed) return `<span class="w ${T.missed.has(i) ? 'miss' : ''}">${w}</span>`;
+        if (i < T.revealed) return `<span class="w ${T.missed.has(i) ? 'miss' : ''} ${i === T.revealed - 1 && T.anim ? 'just' : ''}">${w}</span>`;
         if (h.mode === 0) return `<span class="w ghost" aria-hidden="true">${w}</span>`;
         if (h.mode === 1) return `<span class="w fl" aria-hidden="true">${firstLetter(w)}ـ</span>`;
         return `<span class="w blank" style="min-width:${22 + w.length * 6}px" aria-hidden="true"></span>`;
@@ -657,7 +658,9 @@ export const Test = {
       if (T.revealed >= total) return;
       if (miss) { T.missed.add(T.revealed); T.mistakes++; ctx.vibrate([20, 30, 20]); } else ctx.vibrate(10);
       T.revealed++;
+      T.anim = true;
       rer();
+      T.anim = false;
     };
     root.querySelector('[data-act="reveal"]')?.addEventListener('click', () => reveal(false));
     root.querySelector('[data-act="miss"]')?.addEventListener('click', () => reveal(true));
@@ -669,6 +672,7 @@ export const Test = {
     root.querySelectorAll('[data-rate]').forEach(b => b.addEventListener('click', () => {
       const r = +b.dataset.rate;
       const when = whenLabel(h.items[g], r);
+      if (r === 2) FX.burstAt(b, { n: 30, power: 7 });
       rate(g, r);
       T.rated = r;
       ctx.toast(`تمّت الجدولة ✓ — المراجعة ${when}`);
