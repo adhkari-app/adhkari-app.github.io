@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /circles/{code} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && code.size() == 6
+        && request.resource.data.keys().hasOnly(['name', 'goal', 'total', 'owner', 'createdAt', 'endsAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 40
+        && request.resource.data.goal is int && request.resource.data.goal > 0 && request.resource.data.goal <= 10000000
+        && request.resource.data.total == 0
+        && request.resource.data.owner == request.auth.uid;
+
+      // Members can only increase the total, by at most 2000 per write
+      allow update: if request.auth != null
+        && exists(/databases/$(database)/documents/circles/$(code)/members/$(request.auth.uid))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['total'])
+        && request.resource.data.total > resource.data.total
+        && request.resource.data.total - resource.data.total <= 2000;
+
+      match /members/{uid} {
+        allow read: if request.auth != null;
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['name', 'joinedAt', 'lastActive'])
+          && request.resource.data.name is string && request.resource.data.name.size() <= 30;
+        allow delete: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+  }
+}

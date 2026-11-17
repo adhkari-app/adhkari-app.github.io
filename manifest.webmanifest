@@ -1,0 +1,24 @@
+{
+  "name": "أذكاري — أذكار واستغفار",
+  "short_name": "أذكاري",
+  "description": "أذكار الصباح والمساء حسب وقتك، سبحة ذكية، وحلقات استغفار جماعية.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./#/home",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F6F1E7",
+  "theme_color": "#0F4C45",
+  "categories": ["lifestyle", "education"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "السبحة", "url": "./#/tasbeeh", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "أذكار الصباح", "url": "./#/adhkar?p=morning", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "أذكار المساء", "url": "./#/adhkar?p=evening", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
