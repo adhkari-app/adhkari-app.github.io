@@ -7,7 +7,16 @@ import * as P from './prayer.js';
 import * as M from './more.js';
 import * as RM from './reminders.js';
 import * as circle from './challenge.js';
+
 import * as Q from './quran.js';
+
+/* progress % that never hides a real contribution: 0.03% instead of 0% */
+function pctOf(total, goal) {
+  const raw = goal ? Math.min(100, total / goal * 100) : 0;
+  const label = raw === 0 ? '0' : raw < 1 ? (raw < 0.01 ? '0.01' : raw.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')) : raw < 10 && raw % 1 ? raw.toFixed(1) : String(Math.floor(raw));
+  const vis = raw === 0 ? 0 : Math.max(raw, 1.5); // tiny visible arc
+  return { raw, label, vis };
+}
 
 const s = store.load();
 const app = document.getElementById('app');
@@ -211,12 +220,12 @@ const Home = {
     const c = s.circle;
     let circleCard;
     if (c && c.cache) {
-      const pct = Math.min(100, Math.round(c.cache.total / c.cache.goal * 100));
+      const PC = pctOf(c.cache.total, c.cache.goal);
       circleCard = `
         <a class="card stat-card" href="#/circle" style="gap:10px">
           <span class="row between"><b style="font-size:15px">${esc(c.cache.name)}</b><span class="chip gold">${esc(daysLeftLabel(c.cache.endsAt))}</span></span>
           <span><span class="big-num" style="font-size:22px">${fmt(c.cache.total)}</span><span class="unit">من ${fmt(c.cache.goal)} استغفار</span></span>
-          <span class="progress gold"><span style="width:${pct}%"></span></span>
+          <span class="progress gold"><span style="width:${PC.vis}%"></span></span>
         </a>`;
     } else if (c) {
       circleCard = `<a class="card stat-card" href="#/circle"><b style="font-size:15px">حلقتك</b><span class="muted">رمز الحلقة <span class="code">${esc(c.code)}</span></span></a>`;
@@ -623,8 +632,8 @@ const Circle = {
     const { circle: c, members, uid } = data;
     if (!c) return `<div class="card stack"><b>هذه الحلقة لم تعد موجودة</b><button class="btn ghost" data-act="leave">الخروج منها</button></div>`;
     const t = today();
-    const pct = Math.min(100, Math.round(c.total / c.goal * 100));
-    const off = (314.16 * (1 - pct / 100)).toFixed(1);
+    const PC = pctOf(c.total, c.goal);
+    const off = (314.16 * (1 - PC.vis / 100)).toFixed(1);
     const active = members.filter(m => m.lastActive === t || (m.id === uid && (s.circle.mine?.[t] || 0) > 0)).length;
     const sorted = [...members].sort((a, b) => (a.id === uid ? -1 : b.id === uid ? 1 : (a.name || '').localeCompare(b.name || '', 'ar')));
     const endsAt = c.endsAt?.toMillis ? c.endsAt.toMillis() : Date.now();
@@ -634,7 +643,7 @@ const Circle = {
           <div class="circle-ring">
             <svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="10"/>
             <circle cx="60" cy="60" r="50" fill="none" stroke="#D9B26A" stroke-width="10" stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="${off}" transform="rotate(-90 60 60)"/></svg>
-            <span>${pct}%</span>
+            <span>${PC.label}%</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px">
             <span style="font-size:30px;font-weight:700;line-height:1.1">${fmt(c.total)}</span>
