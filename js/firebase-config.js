@@ -12,7 +12,7 @@ export const firebaseConfig = {
 };
 
 // For push reminders: Firebase console → Project settings → Cloud Messaging → Web Push certificates → Key pair
-export const vapidKey = null;
+export const vapidKey = "BIQK-NziDbkU8axifW19iJeIlzy7W-wUPg8uEeC-VXA94oyX5kf4MWkTZo5pg63Eb5ADh4bD0a9T0J_TAeIKzQA";
 
 /* Example:
 export const firebaseConfig = {
