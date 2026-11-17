@@ -23,6 +23,18 @@ function tzOffsetHours(tz, at) {
 
 const snap = await db.collection('reminders').get();
 let sent = 0;
+
+if (process.env.TEST === 'true') {
+  for (const doc of snap.docs) {
+    const r = doc.data(); if (!r.token) continue;
+    try {
+      await admin.messaging().send({ token: r.token, data: { title: 'أذكاري ✓', body: 'التذكيرات شغّالة — بارك الله فيك', link: '#/home', tag: 'test' }, webpush: { headers: { Urgency: 'high', TTL: '600' } } });
+      sent++;
+    } catch (err) { console.warn(doc.id, err.code || err.message); }
+  }
+  console.log(`TEST: ${snap.size} devices, sent ${sent}`);
+  process.exit(0);
+}
 for (const doc of snap.docs) {
   const r = doc.data();
   if (!r.token || !r.prefs) continue;
