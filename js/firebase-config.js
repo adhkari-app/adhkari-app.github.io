@@ -4,6 +4,9 @@
 
 export const firebaseConfig = null;
 
+// For push reminders: Firebase console → Project settings → Cloud Messaging → Web Push certificates → Key pair
+export const vapidKey = null;
+
 /* Example:
 export const firebaseConfig = {
   apiKey: "AIza...",

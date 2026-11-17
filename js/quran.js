@@ -21,6 +21,7 @@ export function ensureData() {
   return loading;
 }
 export const ready = () => !!(META && TEXT);
+export const qdata = () => ({ META, TEXT });
 
 const S = n => META.surahs[n - 1];
 const gid = (s, a) => S(s).start + a - 1;               // 0-based global ayah index
@@ -341,6 +342,11 @@ export const QuranHome = {
       </header>
       <main class="pad overlap stack stagger" style="margin-top:-48px">
         ${wird}
+        ${(() => { const k = ctx.khatma ? ctx.khatma() : null; return `<a class="card stat-card" href="#/khatma" style="flex-direction:row;align-items:center;gap:14px">
+          <span class="now-icon">${I.book}</span>
+          <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">ختمة القراءة</b>
+          <span class="muted" style="font-size:13px">${k && !k.done ? `ورد اليوم: صفحة ${k.fromP}–${k.target} · وصلت ${k.page}` : 'اختم القرآن بخطة يومية مع مصحف بصفحات'}</span></span>
+          ${I.left.replace('<svg', '<svg width="20" height="20"')}</a>`; })()}
         <section class="card stack" style="gap:12px">
           <div class="row between"><h2 style="font-size:15px">خريطة الحفظ</h2><a href="#/surahs" style="font-size:13px;font-weight:600;text-decoration:none">فهرس السور</a></div>
           <div class="juz-grid">${cells}</div>
@@ -494,6 +500,7 @@ export const Learn = {
           <div class="rep-dots" data-el="dots"></div>
           <span class="rep-label" data-el="replabel"></span>
         </div>
+        <button class="btn ghost sm" data-act="tafsir">${I.book.replace('<svg', '<svg width="18" height="18"')} تفسير الآية (الميسّر)</button>
         <div class="reciter">
           <span class="rc-av">${I.mic}</span>
           <label class="rc-lbl" for="rec"><span>القارئ</span>
@@ -519,6 +526,7 @@ export const Learn = {
     const h = H();
     const key = `${s}:${a}`;
     pageTurn(root.querySelector('.mushaf'), s, a);
+    root.querySelector('[data-act="tafsir"]').addEventListener('click', () => ctx.showTafsir(gid(s, a), `سورة ${S(s).name} · الآية ${arNum(a)}`));
     root.querySelector('[data-act="share"]').addEventListener('click', () => {
       const g0 = gid(s, a);
       shareCard({ kind: 'ayah', title: `سورة ${S(s).name}`, text: TEXT[g0], sub: `سورة ${S(s).name} · الآية ${arNum(a)}` });
@@ -588,6 +596,39 @@ function pageTurn(el, s, a) {
 const T = { key: '', revealed: 0, mistakes: 0, missed: new Set(), rated: -1 };
 const MODES = ['إخفاء تدريجي', 'أول حرف', 'كلمة كلمة'];
 
+function wordsHTML(words, mode) {
+  return words.map((w, i) => {
+    if (i < T.revealed) return `<span class="w ${T.missed.has(i) ? 'miss' : ''} ${i === T.revealed - 1 && T.anim ? 'just' : ''}">${w}</span>`;
+    if (mode === 0) return `<span class="w ghost" aria-hidden="true">${w}</span>`;
+    if (mode === 1) return `<span class="w fl" aria-hidden="true">${firstLetter(w)}ـ</span>`;
+    return `<span class="w blank" style="min-width:${22 + w.length * 6}px" aria-hidden="true"></span>`;
+  }).join(' ');
+}
+
+/* ---------- voice tasmee (experimental, Web Speech API) ---------- */
+const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+const V = { rec: null, on: false, restarts: 0 };
+const normAr = w => w.replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g, '').replace(/[ٱأإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي').replace(/ء/g, '').replace(/[^\u0621-\u064A]/g, '');
+function lev(a, b) {
+  const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = cur; }
+  return prev[n];
+}
+const similar = (a, b) => { if (!a || !b) return false; if (a === b) return true; return 1 - lev(a, b) / Math.max(a.length, b.length) >= 0.6; };
+function matchWords(expected, heard) {
+  let k = 0; const missed = [];
+  for (const w of heard) {
+    if (k >= expected.length) break;
+    if (similar(w, expected[k])) { k++; continue; }
+    if (k + 1 < expected.length && similar(w, expected[k + 1])) { missed.push(k); k += 2; continue; }
+    // ASR may glue two words together
+    if (k + 1 < expected.length && similar(w, expected[k] + expected[k + 1])) { k += 2; continue; }
+  }
+  return { k, missed };
+}
+function stopVoice() { V.on = false; try { V.rec && V.rec.stop(); } catch (e) {} V.rec = null; }
+
 function firstLetter(w) {
   for (const ch of w) { if (/\p{L}/u.test(ch)) return ch; }
   return w.charAt(0);
@@ -620,12 +661,7 @@ export const Test = {
       const words = TEXT[g].split(' ').filter(Boolean);
       const total = words.length;
       const done = T.revealed >= total;
-      const wHTML = words.map((w, i) => {
-        if (i < T.revealed) return `<span class="w ${T.missed.has(i) ? 'miss' : ''} ${i === T.revealed - 1 && T.anim ? 'just' : ''}">${w}</span>`;
-        if (h.mode === 0) return `<span class="w ghost" aria-hidden="true">${w}</span>`;
-        if (h.mode === 1) return `<span class="w fl" aria-hidden="true">${firstLetter(w)}ـ</span>`;
-        return `<span class="w blank" style="min-width:${22 + w.length * 6}px" aria-hidden="true"></span>`;
-      }).join(' ');
+      const wHTML = wordsHTML(words, h.mode);
       const item = h.items[g];
       const suggest = T.mistakes === 0 ? 2 : T.mistakes <= 2 ? 1 : 0;
       const isReview = next === 'review';
@@ -646,6 +682,8 @@ export const Test = {
           <p class="test-words" aria-live="polite">${wHTML} ${done ? marker(a) : ''}</p>
         </div>
         ${!done ? `
+          ${SR ? `<button class="btn outline voice-btn" data-act="voice">${I.mic.replace('<svg', '<svg width="20" height="20"')}<span data-el="vlbl">سمّع بصوتك</span><span class="beta">تجريبي</span></button>
+          <span class="v-heard" data-el="heard" aria-live="polite"></span>` : ''}
           <p class="muted" style="text-align:center;font-size:13px;margin:0">قول الكلمة التالية من حفظك، وبعدين اكشفها</p>
           <div class="grid2">
             <button class="btn ghost big" data-act="miss" style="color:var(--gold-ink)">ما تذكّرتها</button>
@@ -686,6 +724,51 @@ export const Test = {
       T.mistakes += total - T.revealed; T.revealed = total; rer();
     });
     root.querySelector('[data-act="restart"]').addEventListener('click', () => { T.revealed = 0; T.mistakes = 0; T.missed = new Set(); T.rated = -1; rer(); });
+    const vbtn = root.querySelector('[data-act="voice"]');
+    if (vbtn && SR) {
+      const words = TEXT[g].split(' ').filter(Boolean);
+      const expected = words.map(normAr);
+      const base = T.revealed, baseMissed = new Set(T.missed), baseMist = T.mistakes;
+      const lbl = root.querySelector('[data-el="vlbl"]'), heardEl = root.querySelector('[data-el="heard"]');
+      const paint = () => {
+        root.querySelector('.test-words').innerHTML = wordsHTML(words, h.mode);
+        const cnt = root.querySelector('.row.between .muted');
+        if (cnt) cnt.textContent = `الكلمات: ${T.revealed} من ${total} · أخطاء: ${T.mistakes}`;
+      };
+      const onText = (txt) => {
+        heardEl.textContent = txt.trim() ? `سمعت: ${txt.trim().split(/\s+/).slice(-8).join(' ')}` : '';
+        const heard = txt.split(/\s+/).map(normAr).filter(Boolean);
+        const r = matchWords(expected.slice(base), heard);
+        const newRev = base + r.k;
+        if (newRev > T.revealed) {
+          T.missed = new Set([...baseMissed, ...r.missed.map(i => i + base)]);
+          T.mistakes = baseMist + r.missed.length;
+          T.revealed = newRev; ctx.vibrate(8);
+          paint();
+          if (T.revealed >= total) { stopVoice(); ctx.vibrate([30, 30, 30]); setTimeout(() => ctx.render(), 450); }
+        }
+      };
+      const start = () => {
+        const rec = new SR();
+        rec.lang = 'ar-SA'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+        rec.onresult = ev => { let t = ''; for (let i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript + ' '; onText(t); };
+        rec.onerror = ev => {
+          if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { ctx.toast('اسمح للتطبيق باستخدام الميكروفون'); stopVoice(); }
+          else if (ev.error === 'network') { ctx.toast('التسميع بالصوت بحتاج إنترنت'); stopVoice(); }
+        };
+        rec.onend = () => {
+          if (V.on && T.revealed < total && V.restarts++ < 6) { try { rec.start(); } catch (e) {} return; }
+          V.on = false; vbtn.classList.remove('on'); lbl.textContent = 'سمّع بصوتك';
+        };
+        V.rec = rec; V.on = true; V.restarts = 0;
+        try { rec.start(); } catch (e) { ctx.toast('تعذّر تشغيل الميكروفون'); V.on = false; return; }
+        vbtn.classList.add('on'); lbl.textContent = 'جارٍ الاستماع… اقرأ الآية';
+      };
+      vbtn.addEventListener('click', () => {
+        if (V.on) { stopVoice(); vbtn.classList.remove('on'); lbl.textContent = 'سمّع بصوتك'; }
+        else start();
+      });
+    }
     root.querySelectorAll('[data-rate]').forEach(b => b.addEventListener('click', () => {
       const r = +b.dataset.rate;
       const when = whenLabel(h.items[g], r);
@@ -705,7 +788,7 @@ export const Test = {
     };
     document.addEventListener('keydown', this.key);
   },
-  unmount() { document.removeEventListener('keydown', this.key); }
+  unmount() { document.removeEventListener('keydown', this.key); stopVoice(); }
 };
 
 /* ================= REVIEW ================= */

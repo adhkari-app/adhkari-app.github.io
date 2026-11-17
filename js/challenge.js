@@ -12,6 +12,7 @@ let flushTimer = null;
 let unsubs = [];
 
 export const isConfigured = () => !!(firebaseConfig && firebaseConfig.projectId);
+export const CDN_URL = CDN;
 
 export function init() {
   if (!isConfigured()) return Promise.reject(new Error('not-configured'));
@@ -34,7 +35,7 @@ export function init() {
       const off = authMod.onAuthStateChanged(auth, u => { if (u) { off(); res(u); } });
       authMod.signInAnonymously(auth).catch(() => {});
     }));
-    fb = { db, auth, uid: user.uid, fs };
+    fb = { db, auth, uid: user.uid, fs, app };
     startFlushLoop();
     return fb;
   })();

@@ -565,3 +565,122 @@ body.khushu .ring-wrap .string{stroke:#D9B26A}
 @keyframes bookOpen{0%{transform:perspective(1200px) rotateY(-35deg) scale(.92);transform-origin:100% 50%;opacity:0}100%{transform:none;opacity:1}}
 
 @media (prefers-reduced-motion: reduce){.bead{transition:none}.br-orb{transition:none}}
+
+/* =====================================================
+   v1.4 — prayer, qibla, duas, names, calendar, khatma, tafsir, voice
+   ===================================================== */
+.prayer-strip{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:18px;background:var(--hero);color:var(--hero-ink);text-decoration:none;box-shadow:var(--shadow)}
+.prayer-strip b{font-size:16px}
+.ps-ic{width:40px;height:40px;border-radius:14px;background:rgba(217,178,106,.16);color:var(--gold);display:flex;align-items:center;justify-content:center}
+.ps-ic svg{width:22px;height:22px}
+.ps-left{font-size:13px;font-weight:700;color:var(--gold);background:rgba(217,178,106,.14);padding:6px 10px;border-radius:999px;white-space:nowrap}
+.fast-hint{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:var(--ok-soft);color:var(--primary);font-size:13px;font-weight:600;text-decoration:none}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tile-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:84px;border-radius:18px;background:var(--surface);border:1px solid var(--line);color:var(--primary);text-decoration:none;font-size:12px;font-weight:600;text-align:center;padding:8px}
+.tile-btn svg{width:26px;height:26px;color:var(--gold-ink)}
+.tile-btn span{color:var(--ink)}
+.tile-btn{position:relative;overflow:hidden;isolation:isolate}
+.more-adhkar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;border:1px dashed var(--frame);background:var(--parch);color:var(--primary);text-decoration:none;font-size:13px;font-weight:600}
+.more-adhkar span{flex:1}
+
+/* prayer */
+.pr-hero{padding-bottom:84px}
+.pr-count{display:flex;align-items:baseline;gap:10px;margin-top:14px}
+.pr-count span{font-size:14px;color:var(--hero-muted)}
+.pr-count b{font-size:40px;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums;letter-spacing:1px;direction:ltr}
+.pr-list{list-style:none;margin:0;padding:6px 16px}
+.pr-row{display:flex;align-items:center;gap:12px;min-height:56px;border-bottom:1px solid var(--line)}
+.pr-row:last-child{border-bottom:none}
+.pr-row b{flex:1;font-size:15px}
+.pr-ic{width:38px;height:38px;border-radius:12px;background:var(--gold-soft);color:var(--gold-ink);display:flex;align-items:center;justify-content:center}
+.pr-time{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.pr-row.past{opacity:.55}
+.pr-row.next{margin:0 -10px;padding:0 10px;border-radius:14px;background:var(--gold-soft)}
+.pr-row.next .pr-ic{background:var(--primary);color:var(--gold)}
+
+/* qibla */
+.qibla-wrap{width:min(320px,86vw);aspect-ratio:1;border-radius:50%;position:relative;transition:box-shadow .3s;margin-top:8px}
+.qibla-wrap.aligned{box-shadow:0 0 0 6px rgba(15,76,69,.15),0 0 40px rgba(217,178,106,.6)}
+.compass{width:100%;height:100%}
+.c-ring{fill:var(--parch);stroke:var(--frame);stroke-width:2}
+.dial{transform-origin:150px 150px;transition:transform .15s linear}
+.tk{stroke:var(--muted);stroke-width:1;opacity:.5}
+.tk-l{stroke:var(--ink);stroke-width:2}
+.cd-n,.cd-l{font-family:var(--ui);font-size:18px;font-weight:700;text-anchor:middle;fill:var(--muted)}
+.cd-n{fill:#B4541E}
+.q-line{stroke:var(--gold);stroke-width:3;stroke-dasharray:6 6}
+.kaaba{fill:#1D2B28;stroke:#D9B26A;stroke-width:1.5}
+.kaaba-band{fill:#D9B26A}
+.needle{fill:var(--primary)}
+.hub{fill:var(--gold);stroke:var(--surface);stroke-width:3}
+.qibla-wrap.aligned .needle{fill:#2E8A62}
+.q-status{font-size:18px;color:var(--primary)}
+
+/* duas */
+.dua-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dua-tile{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--line);text-decoration:none;color:var(--ink);min-height:110px;position:relative;overflow:hidden;isolation:isolate}
+.dua-tile b{font-size:15px}
+.dua-tile span{font-size:12px}
+.dt-ic{width:42px;height:42px;border-radius:14px;background:var(--gold-soft);color:var(--gold-ink);display:flex;align-items:center;justify-content:center}
+.dua-tile.hero-tile{background:var(--hero);border-color:var(--hero);color:var(--hero-ink)}
+.dua-tile.hero-tile .dt-ic{background:rgba(217,178,106,.16);color:var(--gold)}
+.dua-tile.hero-tile span{color:var(--hero-muted)}
+.dhikr .txt.qtxt{font-family:'Amiri Quran',var(--quran);line-height:2.2}
+
+/* names */
+.names-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.name-card{height:118px;border:none;background:none;padding:0;perspective:700px}
+.nc-in{position:relative;display:block;width:100%;height:100%;transition:transform .55s cubic-bezier(.3,1.2,.4,1);transform-style:preserve-3d}
+.name-card.flip .nc-in{transform:rotateY(180deg)}
+.nc-front,.nc-back{position:absolute;inset:0;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;backface-visibility:hidden;-webkit-backface-visibility:hidden;padding:8px}
+.nc-front{background:var(--parch);border:1px solid var(--frame)}
+.nc-front i{font-style:normal;font-size:11px;color:var(--gold-ink)}
+.nc-front b{font-family:var(--quran);font-size:22px;color:var(--primary);line-height:1.3;text-align:center}
+.nc-back{background:var(--hero);color:var(--hero-ink);transform:rotateY(180deg);font-size:12px;line-height:1.6;text-align:center}
+.quiz-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.q-opt{height:64px;border-radius:16px;border:1px solid var(--line);background:var(--surface);font-family:var(--quran);font-size:22px;font-weight:700;color:var(--primary)}
+.q-opt.right{background:#2E8A62;border-color:#2E8A62;color:#fff;animation:pop .4s}
+.q-opt.wrong{background:#B4541E;border-color:#B4541E;color:#fff;animation:shake .4s}
+@keyframes shake{25%{transform:translateX(6px)}50%{transform:translateX(-6px)}75%{transform:translateX(3px)}}
+
+/* calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-wd{text-align:center;font-size:11px;color:var(--muted);padding:4px 0}
+.cal-cell{aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--parch);border:1px solid transparent}
+.cal-cell b{font-size:14px;font-family:var(--quran)}
+.cal-cell i{font-style:normal;font-size:9px;color:var(--muted)}
+.cal-cell.empty{background:none}
+.cal-cell.fast{background:var(--ok-soft);border-color:rgba(15,76,69,.35)}
+.cal-cell.occ{background:var(--gold-soft);border-color:var(--gold)}
+.cal-cell.today{box-shadow:inset 0 0 0 2px var(--gold)}
+.occ-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.occ-row:last-child{border-bottom:none}
+.occ-dot{width:10px;height:10px;border-radius:50%;background:var(--gold)}
+.occ-dot.fast{background:#2E8A62}
+.ram-card{align-items:center;text-align:center;gap:4px}
+
+/* tafsir sheet */
+.sheet-wrap{position:fixed;inset:0;z-index:85;background:rgba(8,32,29,0);transition:background .3s;display:flex;align-items:flex-end;justify-content:center}
+.sheet-wrap.open{background:rgba(8,32,29,.5)}
+.sheet{width:100%;max-width:480px;max-height:78vh;overflow:auto;background:var(--surface);border-radius:26px 26px 0 0;padding:10px 20px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.9,.3,1);border-top:2px solid var(--gold)}
+.sheet-wrap.open .sheet{transform:none}
+.sheet-handle{width:44px;height:5px;border-radius:3px;background:var(--line);align-self:center}
+.sheet-ayah{font-family:'Amiri Quran',var(--quran);font-size:22px;line-height:2.1;color:var(--primary);margin:0;text-align:center;background:var(--parch);border-radius:16px;padding:12px}
+.sheet-body{font-size:15px;line-height:2;color:var(--ink)}
+
+/* khatma & reader */
+.kh-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kh-opts .plan-opt{min-height:72px;align-items:center;text-align:center}
+.reader-page{padding:20px 16px 34px}
+.reader-page .mushaf-text{font-size:calc(22px * var(--fs));line-height:2.3}
+.surah-banner.sm{height:52px;justify-content:center;margin:6px 0}
+.surah-banner.sm h2{font-size:19px}
+.page-num{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-family:var(--quran);font-size:14px;color:var(--gold-ink)}
+.reader-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0 8px}
+
+/* voice tasmee */
+.voice-btn{gap:10px}
+.voice-btn .beta{font-size:10px;font-weight:700;background:var(--gold-soft);color:var(--gold-ink);padding:2px 8px;border-radius:999px}
+.voice-btn.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary);animation:micPulse 1.4s ease-in-out infinite}
+@keyframes micPulse{50%{box-shadow:0 0 0 8px rgba(217,178,106,.25)}}
+.v-heard{font-size:12px;color:var(--muted);text-align:center;min-height:16px}

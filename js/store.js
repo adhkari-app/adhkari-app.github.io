@@ -33,6 +33,7 @@ export function save() {
 
 export const get = () => state;
 export const loc = () => state.settings.loc || DEFAULT_LOC;
+export const prayOpts = () => ({ method: state.settings.method || 'mwl', asr: state.settings.asrMethod || 'std', adjust: state.settings.adjust || {} });
 
 export function dateKey(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

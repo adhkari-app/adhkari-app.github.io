@@ -3,6 +3,9 @@ import { adhkarFor, TASBEEH, VERSES } from './data.js';
 import { currentPeriod, fmtTime, sunTimes } from './sun.js';
 import * as FX from './fx.js';
 import * as X from './extras.js';
+import * as P from './prayer.js';
+import * as M from './more.js';
+import * as RM from './reminders.js';
 import * as circle from './challenge.js';
 import * as Q from './quran.js';
 
@@ -44,6 +47,11 @@ const I = {
   mute: svg('<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>'),
   wind: svg('<path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h16a3 3 0 1 1-3 3"/><path d="M3 16h7"/>'),
   palm: svg('<path d="M12 22c.5-4-.5-8 .5-12"/><path d="M12.5 10C9 7 5 8 3 11M12.5 10c-1-4-4-6-7-6M12.5 10c1-4 4-6 7-6M12.5 10c3.5-3 7.5-2 9.5 1"/>'),
+  compass: svg('<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>'),
+  bell: svg('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'),
+  close: svg('<path d="M6 6l12 12M18 6L6 18"/>', 'stroke-width="2"'),
+  cal: svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+  hands: svg('<path d="M7 11V5a1.5 1.5 0 0 1 3 0v5M10 9V4a1.5 1.5 0 0 1 3 0v5M13 9V5a1.5 1.5 0 0 1 3 0v7"/><path d="M16 11.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-3l-2.5-4a1.5 1.5 0 0 1 2.5-1.6L7 15"/>'),
   octa: `<svg aria-hidden="true" viewBox="0 0 56 56" width="56" height="56"><g fill="none" stroke="#D9B26A" stroke-width="1.5"><rect x="12" y="12" width="32" height="32"/><rect x="12" y="12" width="32" height="32" transform="rotate(45 28 28)"/></g></svg>`
 };
 
@@ -78,10 +86,10 @@ function isDark() {
   const m = themeMode();
   if (m === 'dark') return true;
   if (m === 'light') return false;
-  try { const L = store.loc(), now = new Date(), t = sunTimes(now, L.lat, L.lng); return now >= t.maghrib || now < t.sunrise; } catch (e) { return false; }
+  try { const L = store.loc(), now = new Date(), t = sunTimes(now, L.lat, L.lng, store.prayOpts()); return now >= t.maghrib || now < t.sunrise; } catch (e) { return false; }
 }
 function skyNow() {
-  try { const L = store.loc(), now = new Date(); return FX.skyFor(now, sunTimes(now, L.lat, L.lng)); } catch (e) { return 'day'; }
+  try { const L = store.loc(), now = new Date(); return FX.skyFor(now, sunTimes(now, L.lat, L.lng, store.prayOpts())); } catch (e) { return 'day'; }
 }
 function addIstighfar(n = 1) { const d = store.day(); d.i += n; d.t += n; circle.add(n); store.save(); }
 function addTasbeeh(n = 1) { const d = store.day(); d.t += n; store.save(); }
@@ -116,14 +124,15 @@ function geolocate() {
     s.settings.loc = { lat: +pos.coords.latitude.toFixed(3), lng: +pos.coords.longitude.toFixed(3), label: 'موقعك الحالي', auto: true };
     store.save();
     toast('تم ضبط أوقات الأذكار حسب موقعك ✓');
+    RM.syncIfOn();
     render();
   }, () => toast('تعذّر تحديد الموقع — تأكد من السماح بالوصول'), { timeout: 15000, maximumAge: 86400000 });
 }
 
 /* ---------------- Nav ---------------- */
 const NAV = [
-  ['home', 'الرئيسية', I.home, ['garden', 'circle']], ['adhkar', 'الأذكار', I.moon, []], ['tasbeeh', 'السبحة', I.beads, ['breathe']],
-  ['quran', 'القرآن', I.quran, ['surahs', 'surah', 'learn', 'test', 'review']], ['stats', 'إنجازي', I.chart, []]
+  ['home', 'الرئيسية', I.home, ['garden', 'circle', 'prayer', 'qibla', 'names', 'calendar']], ['adhkar', 'الأذكار', I.moon, ['duas', 'dua']], ['tasbeeh', 'السبحة', I.beads, ['breathe']],
+  ['quran', 'القرآن', I.quran, ['surahs', 'surah', 'learn', 'test', 'review', 'khatma', 'read']], ['stats', 'إنجازي', I.chart, []]
 ];
 const navHTML = cur => `<nav class="nav" aria-label="التنقل الرئيسي">${NAV.map(([k, l, ic, subs]) =>
   `<a href="#/${k}" ${k === cur || subs.includes(cur) ? 'aria-current="page"' : ''}><span class="bar"></span>${ic}<span>${l}</span></a>`).join('')}</nav>`;
@@ -133,7 +142,7 @@ const Home = {
   html() {
     const now = new Date();
     const L = store.loc();
-    const per = currentPeriod(now, L.lat, L.lng);
+    const per = currentPeriod(now, L.lat, L.lng, store.prayOpts());
     const t = per.times;
     const list = adhkarFor(per.period);
     const d = store.day();
@@ -149,7 +158,29 @@ const Home = {
       : `من العصر ${fmtTime(t.asr)} · غروب الشمس ${fmtTime(t.maghrib)}`;
 
     let nowCard;
-    if (!per.active) {
+    const lp = (() => { try { return P.lastPrayer(now); } catch (e) { return null; } })();
+    const pt = (() => { try { return P.todayTimes(now); } catch (e) { return null; } })();
+    const lateNight = pt && (now >= new Date(pt.isha.getTime() + 45 * 60000) || now < pt.fajr);
+    if (lp && now - lp.time < 25 * 60000) {
+      const PN = { fajr: 'الفجر', dhuhr: now.getDay() === 5 ? 'الجمعة' : 'الظهر', asr: 'العصر', maghrib: 'المغرب', isha: 'العشاء' };
+      nowCard = `
+        <div class="row" style="gap:12px">
+          <div class="now-icon">${I.hands}</div>
+          <div style="flex:1"><h2 style="font-size:17px">أذكار بعد صلاة ${PN[lp.key]}</h2>
+          <span class="muted" style="font-size:13px">تقبّل الله صلاتك · استغفار وتسبيح وآية الكرسي</span></div>
+        </div>
+        <a class="btn" href="#/dua?c=prayer">ابدأ أذكار الصلاة ${I.left.replace('<svg', '<svg width="18" height="18"')}</a>
+        ${per.active && !isDone ? `<a class="btn ghost sm" href="#/adhkar?p=${per.period}">أذكار ${pName} (${doneN} من ${list.length})</a>` : ''}`;
+    } else if (lateNight && (d.ed || now.getHours() >= 22 || now < pt.fajr)) {
+      nowCard = `
+        <div class="row" style="gap:12px">
+          <div class="now-icon">${I.moon}</div>
+          <div style="flex:1"><h2 style="font-size:17px">أذكار النوم</h2>
+          <span class="muted" style="font-size:13px">آية الكرسي، والمعوذات، وخواتيم البقرة قبل النوم</span></div>
+        </div>
+        <a class="btn" href="#/dua?c=sleep">ابدأ أذكار النوم ${I.left.replace('<svg', '<svg width="18" height="18"')}</a>
+        ${!d.ed ? `<a class="btn ghost sm" href="#/adhkar?p=evening">لسا ما قرأت أذكار المساء (${doneN} من ${list.length})</a>` : ''}`;
+    } else if (!per.active) {
       nowCard = `
         <div class="row" style="gap:12px">
           <div class="now-icon">${I.sun}</div>
@@ -213,6 +244,23 @@ const Home = {
     </header>
     <main class="pad overlap stack stagger">
       <section class="card raised stack" aria-live="polite">${nowCard}</section>
+      ${(() => { try {
+        const np = P.nextPrayer(now), mins = Math.max(0, Math.round((np.time - now) / 60000));
+        const left = mins >= 60 ? `${Math.floor(mins / 60)} س ${mins % 60} د` : `${mins} دقيقة`;
+        const fh = M.fastingHint(now);
+        return `<a class="prayer-strip" href="#/prayer"><span class="ps-ic">${I.compass}</span>
+          <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:12px;opacity:.85">الصلاة القادمة</span><b>${np.name} · ${fmtTime(np.time)}</b></span>
+          <span class="ps-left">بعد ${left}</span></a>
+          ${fh ? `<a class="fast-hint" href="#/calendar">${I.cal.replace('<svg', '<svg width="18" height="18"')}<span>${fh}</span></a>` : ''}`;
+      } catch (e) { return ''; } })()}
+      <div class="tiles">
+        <a class="tile-btn" href="#/prayer">${I.compass}<span>الصلاة والقبلة</span></a>
+        <a class="tile-btn" href="#/duas">${I.hands}<span>الأدعية</span></a>
+        <a class="tile-btn" href="#/names">${I.star}<span>الأسماء الحسنى</span></a>
+        <a class="tile-btn" href="#/calendar">${I.cal}<span>التقويم</span></a>
+        <a class="tile-btn" href="#/khatma">${I.book}<span>الختمة</span></a>
+        <a class="tile-btn" href="#/garden">${I.palm}<span>الحديقة</span></a>
+      </div>
       ${s.settings.loc ? '' : `<button class="loc-hint" data-act="loc">${I.pin}<span>الأوقات محسوبة لغزة. اضغط لتحديد موقعك وضبط أوقات الأذكار بدقة.</span></button>`}
       <div class="grid2">
         <a class="card stat-card" href="#/stats"><span class="lbl flicker">${I.flame}سلسلة الأيام</span>
@@ -418,7 +466,7 @@ const Adhkar = {
     const p = params.get('p');
     if (p === 'morning' || p === 'evening') return p;
     const L = store.loc();
-    return currentPeriod(new Date(), L.lat, L.lng).period;
+    return currentPeriod(new Date(), L.lat, L.lng, store.prayOpts()).period;
   },
   html(params) {
     const p = this.period(params);
@@ -469,6 +517,7 @@ const Adhkar = {
       </div>
     </header>
     <main class="ad-list stagger">
+      <a class="more-adhkar" href="#/duas">${I.hands.replace('<svg', '<svg width="20" height="20"')}<span>أذكار اليوم والليلة: بعد الصلاة، النوم، السفر، الطعام…</span>${I.left.replace('<svg', '<svg width="18" height="18"')}</a>
       ${doneN === list.length ? `<div class="card done-banner">${I.check.replace('<svg', '<svg width="28" height="28" style="color:var(--gold-ink)"')}<b>أتممت ${title}</b><span class="muted" style="font-size:14px">تقبّل الله منك</span></div>` : ''}
       ${cards}
       <button class="btn ghost sm" data-act="reset-period" style="margin-top:8px">${I.reset.replace('<svg', '<svg width="18" height="18"')}<span>إعادة ${title} من البداية</span></button>
@@ -751,6 +800,7 @@ const Stats = {
       </div>
 
       ${X.badgesHTML()}
+      ${RM.html()}
 
       <section class="card" id="settings" style="padding:4px 16px">
         <h2 style="font-size:15px;padding:14px 0 6px">الإعدادات</h2>
@@ -773,13 +823,14 @@ const Stats = {
         <div class="setting"><span class="lbl">مسح كل البيانات<small>العدّادات والسلاسل والإعدادات</small></span>
           <button class="btn ghost sm" data-act="wipe">مسح</button></div>
       </section>
-      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.3 · يعمل بدون إنترنت<br>نص المصحف: الرسم العثماني برواية حفص (QuranEnc) · الصوت: EveryAyah عبر Islamic Network</p>
+      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.4 · يعمل بدون إنترنت<br>نص المصحف: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
     </main>`;
   },
   mount(root, params) {
     if (params.get('s') === 'settings') setTimeout(() => root.querySelector('#settings')?.scrollIntoView({ behavior: 'smooth' }), 50);
     root.querySelector('#nm').addEventListener('change', e => { s.settings.name = e.target.value.trim().slice(0, 30); store.save(); toast('تم الحفظ'); });
     X.bindBadges(root);
+    RM.bind(root);
     root.querySelectorAll('[data-theme]').forEach(b => b.addEventListener('click', () => {
       s.settings.theme = b.dataset.theme; store.save(); applyTheme();
       root.querySelectorAll('[data-theme]').forEach(x => x.setAttribute('aria-pressed', x === b));
@@ -818,7 +869,8 @@ const Stats = {
 /* ================= Router ================= */
 const ROUTES = { home: Home, tasbeeh: Tasbeeh, adhkar: Adhkar, circle: Circle, stats: Stats,
   quran: Q.QuranHome, surahs: Q.Surahs, surah: Q.Surah, learn: Q.Learn, test: Q.Test, review: Q.Review,
-  garden: X.Garden, breathe: X.Breathe };
+  garden: X.Garden, breathe: X.Breathe,
+  prayer: P.Prayer, qibla: P.Qibla, duas: M.Duas, dua: M.DuaCat, names: M.Names, calendar: M.Calendar, khatma: M.Khatma, read: M.Reader };
 let current = null;
 let lastRendered = '';
 
@@ -843,7 +895,7 @@ function decorate(entering) {
   const hero = app.querySelector('.hero, .ad-hero');
   if (hero && !hero.querySelector('.sky-layer')) {
     const L = store.loc(), now = new Date();
-    let t = null; try { t = sunTimes(now, L.lat, L.lng); } catch (e) {}
+    let t = null; try { t = sunTimes(now, L.lat, L.lng, store.prayOpts()); } catch (e) {}
     FX.ambience(hero, FX.skyFor(now, t));
   }
   X.checkBadgesSoon();
@@ -853,13 +905,17 @@ function decorate(entering) {
 
 let lastRoute = '';
 window.addEventListener('hashchange', () => {
+  document.querySelectorAll('.sheet-wrap, .share-modal').forEach(el => el.remove());
   const r = parse().name;
   render();
   if (r !== lastRoute) window.scrollTo(0, 0);
   lastRoute = r;
 });
 
-Q.initQuran({ I, esc, toast, vibrate, render, fmt });
+Q.initQuran({ I, esc, toast, vibrate, render, fmt, showTafsir: (g, t) => M.showTafsir(g, t), khatma: () => M.khatmaSummary() });
+P.initPrayer({ I, esc, toast, vibrate, render, fmt, geolocate, chime: () => X.chime(), sync: () => RM.syncIfOn() });
+M.initMore({ I, esc, toast, vibrate, render, fmt, beadClick: b => X.beadClick(b), chime: () => X.chime(), lastPrayerKey: () => { const l = P.lastPrayer(); return l ? l.key : null; } });
+RM.initReminders({ I, toast, render });
 X.initExtras({ I, esc, toast, vibrate, render, fmt, addIstighfar, addTasbeeh, skyNow, hifzStats: () => Q.hifzStats() });
 X.initTilt();
 setInterval(() => { const was = s.settings.khushu; applyTheme(); if (was !== s.settings.khushu) render(); }, 60000);

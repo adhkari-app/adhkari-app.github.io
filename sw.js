@@ -1,9 +1,10 @@
 // Service worker — offline-first
-const VERSION = 'adhkari-v1.3.0';
+const VERSION = 'adhkari-v1.4.0';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './css/fonts.css', './css/style.css',
-  './js/app.js', './js/store.js', './js/data.js', './js/sun.js', './js/challenge.js', './js/firebase-config.js', './js/quran.js', './js/fx.js', './js/extras.js',
+  './js/app.js', './js/store.js', './js/data.js', './js/sun.js', './js/challenge.js', './js/firebase-config.js', './js/quran.js', './js/fx.js', './js/extras.js', './js/prayer.js', './js/more.js', './js/data2.js', './js/reminders.js',
+  './data/quran-pages.json',
   './data/quran-meta.json', './data/quran-text.json',
   './fonts/amiri-quran-arabic-400-normal.woff2', './fonts/amiri-quran-latin-400-normal.woff2',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-64.png',
@@ -47,4 +48,22 @@ self.addEventListener('fetch', e => {
       return hit || net;
     }));
   }
+});
+
+// Push reminders (data-only FCM messages)
+self.addEventListener('push', e => {
+  let d = {};
+  try { const j = e.data ? e.data.json() : {}; d = j.data || j; } catch (err) { d = { title: 'أذكاري', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'أذكاري', {
+    body: d.body || '', icon: './icons/icon-192.png', badge: './icons/favicon-64.png', dir: 'rtl', lang: 'ar',
+    tag: d.tag || 'adhkari', renotify: true, data: { link: d.link || '#/home' }
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL('./' + (e.notification.data && e.notification.data.link || '#/home'), self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) { if ('focus' in c) { c.navigate(url).catch(() => {}); return c.focus(); } }
+    return self.clients.openWindow(url);
+  }));
 });
