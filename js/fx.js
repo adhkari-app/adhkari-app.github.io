@@ -129,22 +129,22 @@ export function ambience(hero, sky) {
   const layer = document.createElement('div');
   layer.className = 'sky-layer';
   layer.setAttribute('aria-hidden', 'true');
-  let html = '';
+  let html = '', near = '';
   if (sky === 'night' || sky === 'maghrib' || sky === 'fajr') {
     const n = sky === 'night' ? 26 : 12;
     for (let i = 0; i < n; i++) {
       const x = Math.random() * 100, y = Math.random() * 70, s = 1 + Math.random() * 2.2, d = Math.random() * 4;
       html += `<i class="tw" style="left:${x}%;top:${y}%;width:${s}px;height:${s}px;animation-delay:${d}s;animation-duration:${2.5 + Math.random() * 3}s"></i>`;
     }
-    html += `<svg class="crescent" viewBox="0 0 40 40"><path d="M27 6a15 15 0 1 0 7 25A13 13 0 0 1 27 6z" fill="#F3E2B8"/></svg>`;
+    near += `<svg class="crescent" viewBox="0 0 40 40"><path d="M27 6a15 15 0 1 0 7 25A13 13 0 0 1 27 6z" fill="#F3E2B8"/></svg>`;
   } else {
-    html += `<span class="sun-disc"></span>`;
+    near += `<span class="sun-disc"></span>`;
     for (let i = 0; i < 10; i++) {
       const x = Math.random() * 100, y = 30 + Math.random() * 60, d = Math.random() * 8;
       html += `<i class="mote" style="left:${x}%;top:${y}%;animation-delay:-${d}s;animation-duration:${8 + Math.random() * 6}s"></i>`;
     }
   }
-  layer.innerHTML = html;
+  layer.innerHTML = `<div class="sky-far">${html}</div><div class="sky-near">${near}</div>`;
   hero.prepend(layer);
 }
 
@@ -203,7 +203,7 @@ export function celebrate(title, sub) {
 }
 
 /* ---------------- Route depth for directional transitions ---------------- */
-const DEPTH = { home: 0, adhkar: 0, tasbeeh: 0, quran: 0, stats: 0, circle: 0, surahs: 1, review: 1, surah: 2, learn: 3, test: 3 };
+const DEPTH = { home: 0, adhkar: 0, tasbeeh: 0, quran: 0, stats: 0, circle: 1, garden: 1, breathe: 1, surahs: 1, review: 1, surah: 2, learn: 3, test: 3 };
 export function transitionClass(from, to) {
   if (reduce || !from || from === to) return from === to ? '' : 'enter';
   const a = DEPTH[from] ?? 0, b = DEPTH[to] ?? 0;

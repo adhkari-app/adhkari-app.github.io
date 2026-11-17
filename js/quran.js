@@ -2,6 +2,7 @@
 // Text: Uthmani (Hafs) from quran-json (QuranEnc). Audio: cdn.islamic.network (EveryAyah recordings).
 import * as store from './store.js';
 import * as FX from './fx.js';
+import { shareCard } from './extras.js';
 
 let ctx = null; // { I, esc, toast, vibrate, render, fmt }
 export function initQuran(c) { ctx = c; }
@@ -431,7 +432,7 @@ export const Surah = {
           <button class="btn" data-act="plan">${isPlan ? 'أكمل حفظها' : 'احفظ هذه السورة'}</button>
           <a class="btn outline" href="#/test?s=${s}&a=1&next=seqtest">سمّع السورة</a>
         </div>
-        <div class="mushaf">
+        <div class="mushaf book-open">
           ${surahBanner(s)}
           ${s !== 1 && s !== 9 ? `<p class="basmala">${BASMALA}</p>` : ''}
           <p class="mushaf-text">${body}</p>
@@ -483,7 +484,8 @@ export const Learn = {
       return `
       <header class="title-bar">${back(next === 'new' ? '#/quran' : `#/surah?s=${s}`)}
         <div style="flex:1;display:flex;flex-direction:column"><h1 style="font-size:20px">سورة ${m.name}</h1>
-        <span class="muted" style="font-size:12px">الآية ${a} من ${m.count} · الجزء ${juzOf(g)}</span></div></header>
+        <span class="muted" style="font-size:12px">الآية ${a} من ${m.count} · الجزء ${juzOf(g)}</span></div>
+        <button class="icon-btn" data-act="share" aria-label="شارك الآية كصورة">${I.share}</button></header>
       <div class="seg2 pad"><a aria-current="page" href="#/learn?s=${s}&a=${a}&next=${next}">استماع وتكرار</a><a href="#/test?s=${s}&a=${a}&next=${next}">تسميع</a></div>
       <main class="pad stack" style="margin-top:14px">
         <div class="mushaf learn">
@@ -516,6 +518,11 @@ export const Learn = {
     const { s, a } = clampSA(params);
     const h = H();
     const key = `${s}:${a}`;
+    pageTurn(root.querySelector('.mushaf'), s, a);
+    root.querySelector('[data-act="share"]').addEventListener('click', () => {
+      const g0 = gid(s, a);
+      shareCard({ kind: 'ayah', title: `سورة ${S(s).name}`, text: TEXT[g0], sub: `سورة ${S(s).name} · الآية ${arNum(a)}` });
+    });
     if (player.key !== key) { stopPlayer(); player.key = key; player.queue = buildQueue(s, a); player.i = 0; }
     const playBtn = root.querySelector('[data-act="play"]');
     const update = (ev) => {
@@ -567,6 +574,15 @@ export const Learn = {
   },
   unmount() { stopPlayer(); }
 };
+
+/* page-turn between consecutive ayat */
+let lastPage = null;
+function pageTurn(el, s, a) {
+  if (el && lastPage && lastPage.s === s && Math.abs(lastPage.a - a) === 1 && FX.motionOK()) {
+    el.classList.add(a > lastPage.a ? 'turn-next' : 'turn-prev');
+  }
+  lastPage = { s, a };
+}
 
 /* ================= TEST (tasmee) ================= */
 const T = { key: '', revealed: 0, mistakes: 0, missed: new Set(), rated: -1 };
@@ -651,6 +667,7 @@ export const Test = {
     const h = H();
     const { s, a, next } = clampSA(params);
     const g = gid(s, a);
+    if (T.revealed === 0) pageTurn(root.querySelector('.mushaf'), s, a);
     const total = TEXT[g].split(' ').filter(Boolean).length;
     const rer = () => ctx.render();
     root.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { h.mode = +b.dataset.mode; store.save(); rer(); }));
@@ -739,6 +756,18 @@ export const Review = {
     });
   }
 };
+
+/* ---------- For badges ---------- */
+export function hifzStats() {
+  const h = H(), mem = Object.keys(h.items).length;
+  if (!ready()) return { mem, anySurah: false, amma: false };
+  let anySurah = false;
+  for (let n = 1; n <= 114 && !anySurah; n++) { const m = S(n); if (m.count <= mem) { let ok = true; for (let a = 0; a < m.count; a++) if (!h.items[m.start + a]) { ok = false; break; } anySurah = ok; } }
+  const [a, b] = juzRange(30);
+  let amma = mem >= b - a + 1;
+  if (amma) for (let g = a; g <= b; g++) if (!h.items[g]) { amma = false; break; }
+  return { mem, anySurah, amma };
+}
 
 /* ---------- For home/stats ---------- */
 export function summary() {

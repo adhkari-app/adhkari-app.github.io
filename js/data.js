@@ -165,6 +165,7 @@ export function adhkarFor(period) {
 // Tasbeeh options
 export const TASBEEH = [
   { id: 'subhanallah', label: 'سبحان الله', text: 'سُبْحَانَ اللهِ' },
+  { id: 'azeem', label: 'سبحان الله العظيم', text: 'سُبْحَانَ اللهِ الْعَظِيمِ وَبِحَمْدِهِ', palm: true },
   { id: 'hamd', label: 'الحمد لله', text: 'الْحَمْدُ لِلَّهِ' },
   { id: 'takbeer', label: 'الله أكبر', text: 'اللهُ أَكْبَرُ' },
   { id: 'istighfar', label: 'أستغفر الله', text: 'أَسْتَغْفِرُ اللهَ وَأَتُوبُ إِلَيْهِ', istighfar: true },

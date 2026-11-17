@@ -2,6 +2,7 @@ import * as store from './store.js';
 import { adhkarFor, TASBEEH, VERSES } from './data.js';
 import { currentPeriod, fmtTime, sunTimes } from './sun.js';
 import * as FX from './fx.js';
+import * as X from './extras.js';
 import * as circle from './challenge.js';
 import * as Q from './quran.js';
 
@@ -39,6 +40,10 @@ const I = {
   pause: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>',
   prevR: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M7 6v12l8.5-6z"/><rect x="16.8" y="6" width="2.2" height="12" rx="1"/></svg>',
   nextL: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M17 6v12l-8.5-6z"/><rect x="5" y="6" width="2.2" height="12" rx="1"/></svg>',
+  vol: svg('<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>'),
+  mute: svg('<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>'),
+  wind: svg('<path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h16a3 3 0 1 1-3 3"/><path d="M3 16h7"/>'),
+  palm: svg('<path d="M12 22c.5-4-.5-8 .5-12"/><path d="M12.5 10C9 7 5 8 3 11M12.5 10c-1-4-4-6-7-6M12.5 10c1-4 4-6 7-6M12.5 10c3.5-3 7.5-2 9.5 1"/>'),
   octa: `<svg aria-hidden="true" viewBox="0 0 56 56" width="56" height="56"><g fill="none" stroke="#D9B26A" stroke-width="1.5"><rect x="12" y="12" width="32" height="32"/><rect x="12" y="12" width="32" height="32" transform="rotate(45 28 28)"/></g></svg>`
 };
 
@@ -65,7 +70,24 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
+function themeMode() {
+  if (!s.settings.theme) s.settings.theme = s.settings.khushu ? 'dark' : 'auto';
+  return s.settings.theme;
+}
+function isDark() {
+  const m = themeMode();
+  if (m === 'dark') return true;
+  if (m === 'light') return false;
+  try { const L = store.loc(), now = new Date(), t = sunTimes(now, L.lat, L.lng); return now >= t.maghrib || now < t.sunrise; } catch (e) { return false; }
+}
+function skyNow() {
+  try { const L = store.loc(), now = new Date(); return FX.skyFor(now, sunTimes(now, L.lat, L.lng)); } catch (e) { return 'day'; }
+}
+function addIstighfar(n = 1) { const d = store.day(); d.i += n; d.t += n; circle.add(n); store.save(); }
+function addTasbeeh(n = 1) { const d = store.day(); d.t += n; store.save(); }
+
 function applyTheme() {
+  s.settings.khushu = isDark();
   document.body.classList.toggle('khushu', !!s.settings.khushu);
   document.documentElement.style.setProperty('--fs', s.settings.fs || 1);
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -100,7 +122,7 @@ function geolocate() {
 
 /* ---------------- Nav ---------------- */
 const NAV = [
-  ['home', 'الرئيسية', I.home, []], ['adhkar', 'الأذكار', I.moon, []], ['tasbeeh', 'السبحة', I.beads, []],
+  ['home', 'الرئيسية', I.home, ['garden', 'circle']], ['adhkar', 'الأذكار', I.moon, []], ['tasbeeh', 'السبحة', I.beads, ['breathe']],
   ['quran', 'القرآن', I.quran, ['surahs', 'surah', 'learn', 'test', 'review']], ['stats', 'إنجازي', I.chart, []]
 ];
 const navHTML = cur => `<nav class="nav" aria-label="التنقل الرئيسي">${NAV.map(([k, l, ic, subs]) =>
@@ -205,6 +227,11 @@ const Home = {
         <span style="color:var(--gold);display:flex">${I.left.replace('<svg', '<svg width="20" height="20"')}</span>
       </a>
       ${quranCard()}
+      <a class="card stat-card garden-card" href="#/garden" style="flex-direction:row;align-items:center;gap:14px">
+        <span class="now-icon" style="background:var(--ok-soft);color:var(--primary)">${I.palm}</span>
+        <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">حديقتك في الجنة</b>
+        <span class="muted" style="font-size:13px">${X.palms() ? `${fmt(X.palms())} نخلة · سبحان الله العظيم وبحمده` : 'ازرع أول نخلة بـ«سبحان الله العظيم وبحمده»'}</span></span>
+        ${I.left.replace('<svg', '<svg width="20" height="20"')}</a>
       ${circleCard}
     </main>`;
   },
@@ -242,21 +269,28 @@ function daysLeftLabel(endsAtMs) {
 }
 
 /* ================= TASBEEH ================= */
-const C = 854.51; // 2πr, r=136
+const C = 917.35; // 2πr, r=146
+const STEP = 9;     // 40 slots around the misbaha
+const beadAngle = (b, m) => b < m ? 360 - (b + 1) * STEP : (33 - b) * STEP;
+const beadsHTML = m => Array.from({ length: 33 }, (_, b) =>
+  `<circle class="bead ${b < m ? 'on' : ''}" cx="150" cy="22" r="9.4" style="transform:rotate(${beadAngle(b, m)}deg)"/>`).join('');
 const Tasbeeh = {
   opt() { return TASBEEH.find(o => o.id === s.tasbeeh.sel) || TASBEEH[3]; },
   vals() {
     const t = TARGETS[s.tasbeeh.ti], c = s.tasbeeh.count;
     const shown = c === 0 ? 0 : ((c - 1) % t) + 1;
     const round = c === 0 ? 1 : Math.floor((c - 1) / t) + 1;
-    return { t, c, shown, round, offset: (C * (1 - shown / t)).toFixed(1) };
+    const m = shown === 0 ? 0 : ((shown - 1) % 33) + 1;
+    return { t, c, shown, round, m, offset: (C * (1 - shown / t)).toFixed(1) };
   },
   html() {
     const o = this.opt(), v = this.vals();
     return `
     <header class="title-bar">
       <h1>السبحة الذكية</h1>
-      <button class="btn ghost sm" data-act="khushu" style="border-radius:22px">${I.moon.replace('<svg', '<svg width="18" height="18"')}<span>${s.settings.khushu ? 'الوضع العادي' : 'وضع الخشوع'}</span></button>
+      <button class="icon-btn" data-act="sound" aria-label="${X.soundOn() ? 'إيقاف صوت الخرز' : 'تشغيل صوت الخرز'}" aria-pressed="${X.soundOn()}">${X.soundOn() ? I.vol : I.mute}</button>
+      <a class="icon-btn" href="#/breathe" aria-label="تنفّس واستغفر">${I.wind}</a>
+      <button class="icon-btn" data-act="khushu" aria-label="${s.settings.khushu ? 'الوضع الفاتح' : 'وضع الخشوع'}" aria-pressed="${!!s.settings.khushu}">${s.settings.khushu ? I.sun : I.moon}</button>
     </header>
     <div class="pills" role="group" aria-label="اختر الذكر">
       ${TASBEEH.map(x => `<button class="pill" data-sel="${x.id}" aria-pressed="${x.id === o.id}">${x.label}</button>`).join('')}
@@ -266,8 +300,15 @@ const Tasbeeh = {
       <span class="ring-wrap">
         <svg viewBox="0 0 300 300" aria-hidden="true">
           <g class="ornament"><rect x="72" y="72" width="156" height="156"/><rect x="72" y="72" width="156" height="156" transform="rotate(45 150 150)"/><circle cx="150" cy="150" r="96"/></g>
-          <circle class="track" cx="150" cy="150" r="136"/>
-          <circle class="prog" data-el="prog" cx="150" cy="150" r="136" stroke-dasharray="${C}" stroke-dashoffset="${v.offset}" transform="rotate(-90 150 150)"/>
+          <circle class="track" cx="150" cy="150" r="146"/>
+          <circle class="prog" data-el="prog" cx="150" cy="150" r="146" stroke-dasharray="${C}" stroke-dashoffset="${v.offset}" transform="rotate(-90 150 150)"/>
+          <defs>
+            <radialGradient id="bwood" cx=".35" cy=".35" r=".75"><stop offset="0" stop-color="#C99A5B"/><stop offset="1" stop-color="#6E4A1E"/></radialGradient>
+            <radialGradient id="bgold" cx=".35" cy=".35" r=".75"><stop offset="0" stop-color="#FFF3CF"/><stop offset=".55" stop-color="#E2BC6E"/><stop offset="1" stop-color="#A67C3D"/></radialGradient>
+          </defs>
+          <circle class="string" cx="150" cy="150" r="128"/>
+          <g data-el="beads">${beadsHTML(v.m)}</g>
+          <g class="imam"><ellipse cx="150" cy="22" rx="8.5" ry="13"/><circle cx="150" cy="40" r="3.2"/></g>
         </svg>
         <span class="ring-center">
           <span class="count" data-el="count">${v.shown}</span>
@@ -277,7 +318,7 @@ const Tasbeeh = {
       </span>
     </button>
     <div class="hint pad">
-      <b>انقر على الدائرة أو في أي مكان حولها للعدّ</b>
+      ${o.palm ? `<b>كل تسبيحة = نخلة في حديقتك بالجنة</b><a href="#/garden" style="font-size:13px;font-weight:600">${I.palm.replace('<svg', '<svg width="16" height="16" style="vertical-align:-3px"')} شاهد حديقتك (${fmt(X.palms())} نخلة)</a>` : '<b>انقر على الدائرة أو في أي مكان حولها للعدّ</b>'}
       <span>${'vibrate' in navigator ? 'اهتزاز خفيف مع كل تسبيحة، ومزدوج عند إتمام الدورة' : 'يعمل أيضاً مع لوحة المفاتيح: المسافة أو Enter'}</span>
     </div>
     <div class="controls">
@@ -293,6 +334,10 @@ const Tasbeeh = {
     root.querySelector('[data-el="target"]').textContent = v.t;
     root.querySelector('[data-el="target2"]').textContent = v.t;
     root.querySelector('[data-el="prog"]').setAttribute('stroke-dashoffset', v.offset);
+    root.querySelectorAll('[data-el="beads"] .bead').forEach((el, b) => {
+      el.style.transform = `rotate(${beadAngle(b, v.m)}deg)`;
+      el.classList.toggle('on', b < v.m);
+    });
     root.querySelector('[data-el="total"]').textContent = fmt(store.day().t);
   },
   tap(root, e) {
@@ -301,13 +346,14 @@ const Tasbeeh = {
     s.tasbeeh.count++;
     d.t++;
     if (o.istighfar) { d.i++; circle.add(1); }
+    if (o.palm) X.plantPalm();
     store.save();
     const t = TARGETS[s.tasbeeh.ti];
     const zone = root.querySelector('.tapzone');
     const ringEl = root.querySelector('.ring-wrap');
     const rr = ringEl.getBoundingClientRect();
     const px = e && e.clientX ? e.clientX : rr.left + rr.width / 2, py = e && e.clientY ? e.clientY : rr.top + rr.height / 2;
-    FX.floatText(px, py - 10, '+1');
+    FX.floatText(px, py - 10, o.palm ? '+1 نخلة' : '+1');
     if (FX.motionOK()) {
       const w = document.createElement('span'); w.className = 'wave'; ringEl.appendChild(w); setTimeout(() => w.remove(), 700);
     }
@@ -315,10 +361,13 @@ const Tasbeeh = {
       vibrate([60, 40, 60]);
       zone.classList.remove('pulse'); void zone.offsetWidth; zone.classList.add('pulse');
       FX.burst(rr.left + rr.width / 2, rr.top + rr.height / 2, { n: 44, power: 8, size: 6 });
+      X.beadClick(true); X.chime();
       toast(`أتممت ${t} ✓ — بارك الله فيك`);
     } else {
       vibrate(12);
+      X.beadClick(false);
     }
+    X.checkBadgesSoon();
     this.update(root);
     const cEl = root.querySelector('[data-el="count"]');
     cEl.classList.remove('roll'); void cEl.offsetWidth; cEl.classList.add('roll');
@@ -337,7 +386,13 @@ const Tasbeeh = {
       s.tasbeeh.sel = b.dataset.sel; s.tasbeeh.count = 0; store.save(); render();
     }));
     root.querySelector('[data-act="khushu"]').addEventListener('click', () => {
-      s.settings.khushu = !s.settings.khushu; store.save(); applyTheme(); render();
+      s.settings.theme = s.settings.khushu ? 'light' : 'dark'; store.save(); applyTheme(); render();
+      toast(s.settings.khushu ? 'وضع الخشوع' : 'الوضع الفاتح');
+    });
+    root.querySelector('[data-act="sound"]').addEventListener('click', () => {
+      s.settings.sound = !s.settings.sound; store.save();
+      if (s.settings.sound) X.beadClick(false);
+      render();
     });
     root.querySelector('[data-act="target"]').addEventListener('click', () => {
       s.tasbeeh.ti = (s.tasbeeh.ti + 1) % TARGETS.length; s.tasbeeh.count = 0; store.save(); this.update(root);
@@ -695,14 +750,22 @@ const Stats = {
         <div class="card tile"><b>${fmt(store.day().q || 0)}</b><span>آيات سمّعتها اليوم</span></div>
       </div>
 
+      ${X.badgesHTML()}
+
       <section class="card" id="settings" style="padding:4px 16px">
         <h2 style="font-size:15px;padding:14px 0 6px">الإعدادات</h2>
         <div class="setting"><label class="lbl" for="nm">اسمك<small>يظهر في التحية وفي الحلقات</small></label>
           <input id="nm" maxlength="30" value="${esc(s.settings.name)}" placeholder="اختياري" style="width:140px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:0 12px;font-size:14px"></div>
         <div class="setting"><span class="lbl" id="l-vib">الاهتزاز<small>مع كل تسبيحة (أندرويد)</small></span>
           <button class="switch" role="switch" aria-labelledby="l-vib" aria-checked="${s.settings.vibrate}" data-sw="vibrate"></button></div>
-        <div class="setting"><span class="lbl" id="l-kh">وضع الخشوع<small>ألوان داكنة هادئة</small></span>
-          <button class="switch" role="switch" aria-labelledby="l-kh" aria-checked="${s.settings.khushu}" data-sw="khushu"></button></div>
+        <div class="setting" style="flex-wrap:wrap;padding:8px 0"><span class="lbl">المظهر<small>التلقائي بيصير داكن مع المغرب وفاتح مع الشروق</small></span>
+          <div class="theme-seg" role="group" aria-label="المظهر">
+            ${[['auto', 'تلقائي'], ['light', 'فاتح'], ['dark', 'خشوع']].map(([k, l]) => `<button data-theme="${k}" aria-pressed="${themeMode() === k}">${l}</button>`).join('')}
+          </div></div>
+        <div class="setting"><span class="lbl" id="l-snd">أصوات التطبيق<small>طقطقة الخرز ونغمة الإتمام</small></span>
+          <button class="switch" role="switch" aria-labelledby="l-snd" aria-checked="${!!s.settings.sound}" data-sw="sound"></button></div>
+        <div class="setting"><span class="lbl" id="l-tilt">حركة الميلان<small>النجوم والزخارف بتتحرك مع ميلان الجوال</small></span>
+          <button class="switch" role="switch" aria-labelledby="l-tilt" aria-checked="${s.settings.tilt !== false}" data-sw="tilt"></button></div>
         <div class="setting"><span class="lbl">حجم خط الأذكار<small>${Math.round(FS_STEPS[fsIdx] * 100)}%</small></span>
           <span class="row" style="gap:6px"><button class="icon-btn" data-fs="-1" aria-label="تصغير الخط">أ-</button><button class="icon-btn" data-fs="1" aria-label="تكبير الخط">أ+</button></span></div>
         <div class="setting"><span class="lbl">الموقع<small>${esc(L.label)}</small></span>
@@ -710,14 +773,28 @@ const Stats = {
         <div class="setting"><span class="lbl">مسح كل البيانات<small>العدّادات والسلاسل والإعدادات</small></span>
           <button class="btn ghost sm" data-act="wipe">مسح</button></div>
       </section>
-      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.2 · يعمل بدون إنترنت<br>نص المصحف: الرسم العثماني برواية حفص (QuranEnc) · الصوت: EveryAyah عبر Islamic Network</p>
+      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.3 · يعمل بدون إنترنت<br>نص المصحف: الرسم العثماني برواية حفص (QuranEnc) · الصوت: EveryAyah عبر Islamic Network</p>
     </main>`;
   },
   mount(root, params) {
     if (params.get('s') === 'settings') setTimeout(() => root.querySelector('#settings')?.scrollIntoView({ behavior: 'smooth' }), 50);
     root.querySelector('#nm').addEventListener('change', e => { s.settings.name = e.target.value.trim().slice(0, 30); store.save(); toast('تم الحفظ'); });
-    root.querySelectorAll('[data-sw]').forEach(b => b.addEventListener('click', () => {
-      const k = b.dataset.sw; s.settings[k] = !s.settings[k]; store.save();
+    X.bindBadges(root);
+    root.querySelectorAll('[data-theme]').forEach(b => b.addEventListener('click', () => {
+      s.settings.theme = b.dataset.theme; store.save(); applyTheme();
+      root.querySelectorAll('[data-theme]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    }));
+    root.querySelectorAll('[data-sw]').forEach(b => b.addEventListener('click', async () => {
+      const k = b.dataset.sw;
+      if (k === 'tilt') {
+        const on = s.settings.tilt === false;
+        if (on && !(await X.requestTilt())) { toast('ما سمح الجوال بقراءة الميلان'); return; }
+        s.settings.tilt = on; store.save(); b.setAttribute('aria-checked', on);
+        if (!on) { document.documentElement.style.setProperty('--tx', 0); document.documentElement.style.setProperty('--ty', 0); }
+        return;
+      }
+      s.settings[k] = !s.settings[k]; store.save();
+      if (k === 'sound' && s.settings.sound) X.chime();
       b.setAttribute('aria-checked', s.settings[k]); if (k === 'khushu') applyTheme();
       if (k === 'vibrate' && s.settings.vibrate) vibrate(30);
     }));
@@ -740,7 +817,8 @@ const Stats = {
 
 /* ================= Router ================= */
 const ROUTES = { home: Home, tasbeeh: Tasbeeh, adhkar: Adhkar, circle: Circle, stats: Stats,
-  quran: Q.QuranHome, surahs: Q.Surahs, surah: Q.Surah, learn: Q.Learn, test: Q.Test, review: Q.Review };
+  quran: Q.QuranHome, surahs: Q.Surahs, surah: Q.Surah, learn: Q.Learn, test: Q.Test, review: Q.Review,
+  garden: X.Garden, breathe: X.Breathe };
 let current = null;
 let lastRendered = '';
 
@@ -768,6 +846,7 @@ function decorate(entering) {
     let t = null; try { t = sunTimes(now, L.lat, L.lng); } catch (e) {}
     FX.ambience(hero, FX.skyFor(now, t));
   }
+  X.checkBadgesSoon();
   if (entering) FX.countUp(app);
   else app.querySelectorAll('[data-countup]').forEach(el => { el.textContent = Number(el.dataset.countup).toLocaleString('en-US'); });
 }
@@ -781,6 +860,9 @@ window.addEventListener('hashchange', () => {
 });
 
 Q.initQuran({ I, esc, toast, vibrate, render, fmt });
+X.initExtras({ I, esc, toast, vibrate, render, fmt, addIstighfar, addTasbeeh, skyNow, hifzStats: () => Q.hifzStats() });
+X.initTilt();
+setInterval(() => { const was = s.settings.khushu; applyTheme(); if (was !== s.settings.khushu) render(); }, 60000);
 FX.splash();
 FX.initRipples();
 FX.initParallax();
