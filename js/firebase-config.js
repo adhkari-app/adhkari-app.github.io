@@ -2,7 +2,14 @@
 // Firebase console → Project settings → Your apps → Web app → SDK setup and configuration → Config
 // Leave as null to run the app without the group feature.
 
-export const firebaseConfig = null;
+export const firebaseConfig = {
+  apiKey: "AIzaSyBnzp_ouExUzlM3jKlXqLNQUWmPMzkuqfE",
+  authDomain: "adhkari-a57a6.firebaseapp.com",
+  projectId: "adhkari-a57a6",
+  storageBucket: "adhkari-a57a6.firebasestorage.app",
+  messagingSenderId: "771808943289",
+  appId: "1:771808943289:web:1db5f762bc0bb106da4f68"
+};
 
 // For push reminders: Firebase console → Project settings → Cloud Messaging → Web Push certificates → Key pair
 export const vapidKey = null;
