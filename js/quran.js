@@ -342,6 +342,11 @@ export const QuranHome = {
       </header>
       <main class="pad overlap stack stagger" style="margin-top:-48px">
         ${wird}
+        <a class="card stat-card rc-entry" href="#/recite" style="flex-direction:row;align-items:center;gap:14px">
+          <span class="now-icon">${I.mic}</span>
+          <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">التسميع الحي <span class="chip gold" style="font-size:11px;padding:1px 8px;vertical-align:middle">جديد</span></b>
+          <span class="muted" style="font-size:13px">سمّع صفحة من حفظك والتطبيق بيصحّحلك — 3 أخطاء كحد أقصى</span></span>
+          ${I.left.replace('<svg', '<svg width="20" height="20"')}</a>
         ${(() => { const k = ctx.khatma ? ctx.khatma() : null; return `<a class="card stat-card" href="#/khatma" style="flex-direction:row;align-items:center;gap:14px">
           <span class="now-icon">${I.book}</span>
           <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">ختمة القراءة</b>
@@ -438,6 +443,7 @@ export const Surah = {
           <button class="btn" data-act="plan">${isPlan ? 'أكمل حفظها' : 'احفظ هذه السورة'}</button>
           <a class="btn outline" href="#/test?s=${s}&a=1&next=seqtest">سمّع السورة</a>
         </div>
+        <a class="btn ghost" href="#/recite?s=${s}&fresh=1">${ctx.I.mic.replace('<svg', '<svg width="18" height="18"')} تسميع حي لأول صفحة بالسورة</a>
         <div class="mushaf book-open">
           ${surahBanner(s)}
           ${s !== 1 && s !== 9 ? `<p class="basmala">${BASMALA}</p>` : ''}
@@ -865,4 +871,20 @@ export function summary() {
     plan: !!h.plan,
     next: nn ? { s: nn.s, a: nn.a, name: S(nn.s).name } : null
   };
+}
+
+/* ---------- shared with the live-recitation screen (recite.js) ---------- */
+export const hifz = () => H();
+export const rateAyah = (g, r) => rate(g, r);
+export const scheduleOf = (item, r) => schedule(item, r);
+export const surahAyah = g => sa(g);
+export const surahMeta = s => S(s);
+export const quranLoading = () => loadingHTML();
+export function playAyahOnce(g, onDone) {
+  stopPlayer();
+  player.key = '';
+  player.queue = [{ g, ph: 'rep', k: 0 }];
+  player.i = 0; player.brTry = 0;
+  player.onChange = ev => { if (ev === 'end' || ev === 'error' || ev === 'blocked') onDone && onDone(ev); };
+  playCurrent();
 }

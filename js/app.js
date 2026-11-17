@@ -9,6 +9,7 @@ import * as RM from './reminders.js';
 import * as circle from './challenge.js';
 
 import * as Q from './quran.js';
+import * as RC from './recite.js';
 
 /* progress % that never hides a real contribution: 0.03% instead of 0% */
 function pctOf(total, goal) {
@@ -47,6 +48,8 @@ const I = {
   quran: svg('<path d="M2 5.5C5 4.5 9 4.5 12 6.5c3-2 7-2 10-1V19c-3-1-7-1-10 1-3-2-7-2-10-1z"/><path d="M12 6.5V20"/>'),
   plus: svg('<path d="M12 5v14M5 12h14"/>', 'stroke-width="2"'),
   search: svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>'),
+  info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v6M12 16.5v.01"/>', 'stroke-width="2.4"'),
+  help: svg('<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .5c0 1.7-2.5 2-2.5 3.5M12 17v.01"/>'),
   mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
   play: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
   pause: '<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>',
@@ -879,7 +882,7 @@ const Stats = {
 const ROUTES = { home: Home, tasbeeh: Tasbeeh, adhkar: Adhkar, circle: Circle, stats: Stats,
   quran: Q.QuranHome, surahs: Q.Surahs, surah: Q.Surah, learn: Q.Learn, test: Q.Test, review: Q.Review,
   garden: X.Garden, breathe: X.Breathe,
-  prayer: P.Prayer, qibla: P.Qibla, duas: M.Duas, dua: M.DuaCat, names: M.Names, calendar: M.Calendar, khatma: M.Khatma, read: M.Reader };
+  prayer: P.Prayer, qibla: P.Qibla, duas: M.Duas, dua: M.DuaCat, names: M.Names, calendar: M.Calendar, khatma: M.Khatma, read: M.Reader, recite: RC.Recite };
 let current = null;
 let lastRendered = '';
 
@@ -921,6 +924,7 @@ window.addEventListener('hashchange', () => {
   lastRoute = r;
 });
 
+RC.initRecite({ I, esc, toast, vibrate, render, fmt, soundOn: () => X.soundOn() });
 Q.initQuran({ I, esc, toast, vibrate, render, fmt, showTafsir: (g, t) => M.showTafsir(g, t), khatma: () => M.khatmaSummary() });
 P.initPrayer({ I, esc, toast, vibrate, render, fmt, geolocate, chime: () => X.chime(), sync: () => RM.syncIfOn() });
 M.initMore({ I, esc, toast, vibrate, render, fmt, beadClick: b => X.beadClick(b), chime: () => X.chime(), lastPrayerKey: () => { const l = P.lastPrayer(); return l ? l.key : null; } });
