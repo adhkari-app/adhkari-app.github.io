@@ -261,6 +261,7 @@ const Home = {
     </header>
     <main class="pad overlap stack stagger">
       <section class="card raised stack" aria-live="polite">${nowCard}</section>
+      ${SQ.cardHTML()}
       ${(() => { try {
         const np = P.nextPrayer(now), mins = Math.max(0, Math.round((np.time - now) / 60000));
         const left = mins >= 60 ? `${Math.floor(mins / 60)} س ${mins % 60} د` : `${mins} دقيقة`;
@@ -299,7 +300,6 @@ const Home = {
         const done = [d.md, d.ed, d.i >= 100].filter(Boolean).length;
         return `<section class="card wd-card"><div class="row between"><h2 style="font-size:16px">وردي اليوم</h2><span class="chip gold">${done} من 3</span></div>${rows.join('')}</section>`;
       })()}
-      ${SQ.cardHTML()}
       ${s.circle ? circleCard : ''}
       ${s.settings.loc ? '' : `<button class="loc-hint" data-act="loc">${I.pin}<span>الأوقات محسوبة لغزة. اضغط لتحديد موقعك وضبط أوقات الأذكار بدقة.</span></button>`}
     </main>`;
