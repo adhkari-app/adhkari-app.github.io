@@ -939,7 +939,7 @@ const Stats = {
         <div class="setting"><span class="lbl">مسح كل البيانات<small>العدّادات والسلاسل والإعدادات</small></span>
           <button class="btn ghost sm" data-act="wipe">مسح</button></div>
       </section>
-      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.9.2 · يعمل بدون إنترنت<br>المصحف: مصحف المدينة النبوية بخط مجمع الملك فهد (QCF4) · نص الآيات: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
+      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 2.0 · يعمل بدون إنترنت<br>المصحف: مصحف المدينة النبوية بخط مجمع الملك فهد (QCF4) · نص الآيات: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
     </main>`;
   },
   mount(root, params) {

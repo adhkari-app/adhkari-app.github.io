@@ -882,3 +882,30 @@ body.khushu .mr-num{background:rgba(217,178,106,.14);color:var(--gold-ink)}
 .mus-ic svg{width:30px;height:30px}
 .mus-acts{display:flex;gap:8px;width:100%}
 .mus-acts .btn{flex:1}
+.sq-today{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:rgba(217,178,106,.12);border:1px solid rgba(217,178,106,.4);color:inherit;font:inherit;text-align:start;width:100%}
+.sq-today small{font-size:12px;opacity:.85}
+.sq-today b{font-size:16px;color:#FFF6DE}
+.sq-av{width:46px;height:46px;border-radius:23px;flex-shrink:0;display:grid;place-items:center;background:radial-gradient(circle at 40% 35%,#FFF1C9,#D9B26A 60%,#A77B33);color:#0B2A26;font-family:Amiri,serif;font-weight:700;font-size:22px;box-shadow:0 0 18px rgba(242,217,160,.55);animation:sqGlow 3s ease-in-out infinite}
+@keyframes sqGlow{50%{box-shadow:0 0 28px rgba(242,217,160,.85)}}
+.sq-slides{min-height:160px;display:flex;flex-direction:column;justify-content:center}
+.sq-slide[hidden]{display:none}
+.sq-dua.q{font-family:'Amiri Quran',Amiri,serif;font-size:22px;line-height:2.1}
+.sq-nav{display:flex;align-items:center;justify-content:space-between}
+.sq-pos{font-size:13px;color:var(--muted);font-weight:600}
+/* names sky */
+body.sky-mode{background:#06221F}
+body.sky-mode .screen{background:radial-gradient(120% 60% at 50% 0%,#17685E,#06221F 70%)}
+.sq-sky{min-height:100%;color:#F6F1E7;display:flex;flex-direction:column;padding-bottom:20px}
+.sq-skyv{font-family:Amiri,serif;font-size:19px;line-height:1.9;text-align:center;padding:0 24px;color:#F2D9A0;margin:0}
+.sq-skyv small{display:block;font-family:inherit;font-size:12px;opacity:.75}
+.sq-field{position:relative;height:min(118vw,560px);margin:10px 8px 0}
+.sq-dot{position:absolute;width:2px;height:2px;border-radius:1px;background:#fff;opacity:.35;animation:sqTw 3s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes sqTw{50%{opacity:.9}}
+.sq-star{position:absolute;transform:translate(-50%,-10%);display:flex;flex-direction:column;align-items:center;gap:4px;width:118px;background:none;border:0;color:#FFF6DE;font:inherit;font-size:13px;font-weight:600;text-align:center;padding:4px;border-radius:14px}
+.sq-star i{display:block;border-radius:50%;background:radial-gradient(circle,#FFF6DE,#D9B26A 55%,rgba(217,178,106,0) 72%);box-shadow:0 0 22px 6px rgba(242,217,160,.4);animation:sqPulse 3.2s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes sqPulse{50%{box-shadow:0 0 34px 12px rgba(242,217,160,.6);transform:scale(1.08)}}
+.sq-star small{font-weight:400;font-size:11px;opacity:.75}
+.sq-star:active i{transform:scale(1.2)}
+.sq-skyhint{font-size:12px;text-align:center;opacity:.8;margin:8px 20px 0;line-height:1.7}
+.sq-skyacts{display:flex;gap:8px;margin:12px 16px 0}
+.sheet .btn svg{width:22px;height:22px}
