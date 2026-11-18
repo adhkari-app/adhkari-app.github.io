@@ -877,3 +877,8 @@ body.khushu .mr-num{background:rgba(217,178,106,.14);color:var(--gold-ink)}
 .sq-name small{color:var(--muted);font-size:12px}
 .sq-n{width:30px;height:30px;border-radius:15px;display:grid;place-items:center;background:var(--track);font-size:12px;font-weight:700}
 .sq-r{font-size:12px;color:var(--gold-ink)}
+.mus-card{display:flex;flex-direction:row;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(135deg,var(--surface),var(--parch));border:1px solid var(--frame)}
+.mus-ic{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:var(--primary);color:var(--gold);flex-shrink:0}
+.mus-ic svg{width:30px;height:30px}
+.mus-acts{display:flex;gap:8px;width:100%}
+.mus-acts .btn{flex:1}

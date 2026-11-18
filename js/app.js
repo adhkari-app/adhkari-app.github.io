@@ -275,7 +275,7 @@ const Home = {
         <a class="tile-btn" href="#/duas">${I.hands}<span>الأدعية</span></a>
         <a class="tile-btn" href="#/names">${I.star}<span>الأسماء الحسنى</span></a>
         <a class="tile-btn" href="#/calendar">${I.cal}<span>التقويم</span></a>
-        <a class="tile-btn" href="#/khatma">${I.book}<span>الختمة</span></a>
+        <a class="tile-btn" href="#/read?p=${s.lastPage || 1}">${I.quran || I.book}<span>المصحف</span></a>
         <a class="tile-btn" href="#/garden">${I.palm}<span>الحديقة</span></a>
       </div>
       ${s.settings.loc ? '' : `<button class="loc-hint" data-act="loc">${I.pin}<span>الأوقات محسوبة لغزة. اضغط لتحديد موقعك وضبط أوقات الأذكار بدقة.</span></button>`}
@@ -939,7 +939,7 @@ const Stats = {
         <div class="setting"><span class="lbl">مسح كل البيانات<small>العدّادات والسلاسل والإعدادات</small></span>
           <button class="btn ghost sm" data-act="wipe">مسح</button></div>
       </section>
-      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.9 · يعمل بدون إنترنت<br>المصحف: مصحف المدينة النبوية بخط مجمع الملك فهد (QCF4) · نص الآيات: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
+      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.9.2 · يعمل بدون إنترنت<br>المصحف: مصحف المدينة النبوية بخط مجمع الملك فهد (QCF4) · نص الآيات: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
     </main>`;
   },
   mount(root, params) {

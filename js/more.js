@@ -475,6 +475,7 @@ export const Reader = {
     const reader = root.querySelector('[data-el="reader"]');
     const p = +reader.dataset.p;
     document.body.classList.add('reading');
+    const openIndex = params && params.get('idx');
     history.replaceState(null, '', `#/read?p=${p}`);
     const pageEl = root.querySelector('[data-el="page"]'), stage = root.querySelector('[data-el="stage"]');
     if (lastReadPage && Math.abs(lastReadPage - p) === 1 && FX.motionOK()) pageEl.classList.add(p > lastReadPage ? 'turn-next' : 'turn-prev');
@@ -612,6 +613,7 @@ export const Reader = {
       if (moving && Math.abs(dx) > 60) go(dx > 0 ? p + 1 : p - 1);
       x0 = null;
     });
+    if (openIndex) setTimeout(() => root.querySelector('[data-act="index"]')?.click(), 250);
     this._key = e => { if (e.key === 'ArrowLeft') go(p + 1); if (e.key === 'ArrowRight') go(p - 1); };
     addEventListener('keydown', this._key);
   },

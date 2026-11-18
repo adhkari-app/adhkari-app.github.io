@@ -379,6 +379,16 @@ export const QuranHome = {
           <span style="font-size:12px;color:var(--hero-muted)">${pct < 10 && pct > 0 ? pct.toFixed(1) : Math.round(pct)}% من المصحف${fullJuz ? ` · ${fullJuz} ${fullJuz === 1 ? 'جزء' : fullJuz === 2 ? 'جزءان' : fullJuz <= 10 ? 'أجزاء' : 'جزءاً'}` : ''}</span></div>
       </header>
       <main class="pad overlap stack stagger" style="margin-top:-48px">
+        ${(() => { const lp = store.get().lastPage || 1; return `
+        <section class="card raised mus-card">
+          <span class="mus-ic">${I.quran}</span>
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:17px">المصحف الشريف</b>
+            <span class="muted" style="font-size:13px">${lp > 1 ? `آخر صفحة قرأتها: ${lp}` : 'مصحف المدينة بصفحاته'}</span></div>
+          <div class="mus-acts">
+            <a class="btn" href="#/read?p=${lp}">${lp > 1 ? 'تابع القراءة' : 'اقرأ'}</a>
+            <a class="btn ghost sm" href="#/read?p=${lp}&idx=1">الفهرس</a>
+          </div>
+        </section>`; })()}
         ${wird}
         <a class="card stat-card rc-entry" href="#/recite" style="flex-direction:row;align-items:center;gap:14px">
           <span class="now-icon">${I.mic}</span>
