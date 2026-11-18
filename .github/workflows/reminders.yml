@@ -21,5 +21,5 @@ jobs:
       - run: node scripts/send-reminders.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          APP_URL: https://mohammed10alholi-stack.github.io/adhkari/
+          APP_URL: https://adhkari-app.github.io/
           TEST: ${{ inputs.test }}
