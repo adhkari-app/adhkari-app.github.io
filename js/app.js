@@ -13,6 +13,7 @@ import * as RC from './recite.js';
 import * as MU from './mushaf.js';
 import * as OFF from './offline.js';
 import * as BK from './backup.js';
+import * as SQ from './sadaqa.js';
 
 /* progress % that never hides a real contribution: 0.03% instead of 0% */
 function pctOf(total, goal) {
@@ -106,7 +107,7 @@ function isDark() {
 function skyNow() {
   try { const L = store.loc(), now = new Date(); return FX.skyFor(now, sunTimes(now, L.lat, L.lng, store.prayOpts())); } catch (e) { return 'day'; }
 }
-function addIstighfar(n = 1) { const d = store.day(); d.i += n; d.t += n; circle.add(n); store.save(); }
+function addIstighfar(n = 1) { const d = store.day(); d.i += n; d.t += n; circle.add(n); SQ.add(n); store.save(); }
 function addTasbeeh(n = 1) { const d = store.day(); d.t += n; store.save(); }
 
 function applyTheme() {
@@ -259,6 +260,7 @@ const Home = {
     </header>
     <main class="pad overlap stack stagger">
       <section class="card raised stack" aria-live="polite">${nowCard}</section>
+      ${SQ.cardHTML()}
       ${(() => { try {
         const np = P.nextPrayer(now), mins = Math.max(0, Math.round((np.time - now) / 60000));
         const left = mins >= 60 ? `${Math.floor(mins / 60)} س ${mins % 60} د` : `${mins} دقيقة`;
@@ -299,6 +301,7 @@ const Home = {
     </main>`;
   },
   mount(root) {
+    SQ.bindCard(root);
     root.querySelector('[data-act="loc"]')?.addEventListener('click', geolocate);
     if (!Q.ready()) Q.ensureData().then(() => { if (parse().name === 'home') render(); }).catch(() => {});
     this.timer = setInterval(() => render(), 60000);
@@ -408,6 +411,7 @@ const Tasbeeh = {
     const d = store.day();
     s.tasbeeh.count++;
     d.t++;
+    SQ.add(1);
     if (o.istighfar) { d.i++; circle.add(1); }
     if (o.palm) X.plantPalm();
     store.save();
@@ -552,7 +556,9 @@ const Adhkar = {
       const prog = p === 'morning' ? d.m : d.e;
       const id = btn.dataset.id, count = +btn.dataset.count;
       const item = list.find(a => a.id === id);
-      prog[id] = Math.min(count, (prog[id] || 0) + 1);
+      const before = prog[id] || 0;
+      prog[id] = Math.min(count, before + 1);
+      if (prog[id] > before) SQ.add(1);
       if (item.istighfar) { d.i++; circle.add(1); }
       const n = prog[id];
       if (n >= count) {
@@ -933,7 +939,7 @@ const Stats = {
         <div class="setting"><span class="lbl">مسح كل البيانات<small>العدّادات والسلاسل والإعدادات</small></span>
           <button class="btn ghost sm" data-act="wipe">مسح</button></div>
       </section>
-      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.8 · يعمل بدون إنترنت<br>المصحف: مصحف المدينة النبوية بخط مجمع الملك فهد (QCF4) · نص الآيات: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
+      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.9 · يعمل بدون إنترنت<br>المصحف: مصحف المدينة النبوية بخط مجمع الملك فهد (QCF4) · نص الآيات: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
     </main>`;
   },
   mount(root, params) {
@@ -982,7 +988,7 @@ const Stats = {
 const ROUTES = { home: Home, tasbeeh: Tasbeeh, adhkar: Adhkar, circle: Circle, stats: Stats,
   quran: Q.QuranHome, surahs: Q.Surahs, surah: Q.Surah, learn: Q.Learn, test: Q.Test, review: Q.Review,
   garden: X.Garden, breathe: X.Breathe,
-  prayer: P.Prayer, qibla: P.Qibla, duas: M.Duas, dua: M.DuaCat, names: M.Names, calendar: M.Calendar, khatma: M.Khatma, read: M.Reader, recite: RC.Recite };
+  prayer: P.Prayer, qibla: P.Qibla, duas: M.Duas, dua: M.DuaCat, names: M.Names, calendar: M.Calendar, khatma: M.Khatma, read: M.Reader, recite: RC.Recite, shuhada: SQ.Shuhada };
 let current = null;
 let lastRendered = '';
 
@@ -1025,6 +1031,7 @@ window.addEventListener('hashchange', () => {
   lastRoute = r;
 });
 
+SQ.initSadaqa({ I, esc, toast, vibrate, render });
 RC.initRecite({ I, esc, toast, vibrate, render, fmt, soundOn: () => X.soundOn() });
 Q.initQuran({ I, esc, toast, vibrate, render, fmt, showTafsir: (g, t) => M.showTafsir(g, t), khatma: () => M.khatmaSummary() });
 P.initPrayer({ I, esc, toast, vibrate, render, fmt, geolocate, chime: () => X.chime(), sync: () => RM.syncIfOn() });

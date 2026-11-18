@@ -203,7 +203,7 @@ export function celebrate(title, sub) {
 }
 
 /* ---------------- Route depth for directional transitions ---------------- */
-const DEPTH = { home: 0, adhkar: 0, tasbeeh: 0, quran: 0, stats: 0, circle: 1, garden: 1, breathe: 1, surahs: 1, review: 1, surah: 2, learn: 3, test: 3, prayer: 1, qibla: 2, duas: 1, dua: 2, names: 1, calendar: 1, khatma: 1, read: 2, recite: 2 };
+const DEPTH = { home: 0, adhkar: 0, tasbeeh: 0, quran: 0, stats: 0, circle: 1, garden: 1, breathe: 1, surahs: 1, review: 1, surah: 2, learn: 3, test: 3, prayer: 1, qibla: 2, duas: 1, dua: 2, names: 1, calendar: 1, khatma: 1, read: 2, recite: 2, shuhada: 1 };
 export function transitionClass(from, to) {
   if (reduce || !from || from === to) return from === to ? '' : 'enter';
   const a = DEPTH[from] ?? 0, b = DEPTH[to] ?? 0;

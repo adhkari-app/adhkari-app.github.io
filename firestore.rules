@@ -32,5 +32,15 @@ service cloud.firestore {
         allow delete: if request.auth != null && request.auth.uid == uid;
       }
     }
+
+    // صدقة جارية: two shared totals; anyone signed in can add 1 dua or up to 2000 dhikr per write
+    match /stats/sadaqa {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['duas', 'dhikr'])
+        && (request.resource.data.get('duas', 0) - (resource == null ? 0 : resource.data.get('duas', 0))) in [0, 1]
+        && (request.resource.data.get('dhikr', 0) - (resource == null ? 0 : resource.data.get('dhikr', 0))) >= 0
+        && (request.resource.data.get('dhikr', 0) - (resource == null ? 0 : resource.data.get('dhikr', 0))) <= 2000;
+    }
   }
 }
