@@ -423,38 +423,63 @@ function textPageHTML(p) {
       return html;
 }
 
+function openSheet(inner, label) {
+  const el = document.createElement('div');
+  el.className = 'sheet-wrap';
+  el.innerHTML = `<div class="sheet" role="dialog" aria-label="${label || ''}"><span class="sheet-handle"></span>${inner}</div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('open'));
+  const close = () => { el.classList.remove('open'); setTimeout(() => el.remove(), 300); };
+  el.addEventListener('click', e => { if (e.target === el) close(); });
+  el.querySelector('[data-act="x"]')?.addEventListener('click', close);
+  return { el, close };
+}
+const surahOf = g => { const { META } = Q.qdata(); let s = 0; while (s < 113 && META.surahs[s + 1].start <= g) s++; return { s: s + 1, a: g - META.surahs[s].start + 1, m: META.surahs[s] }; };
+const juzOf = g => { const { META } = Q.qdata(); let j = 0; while (j < 29 && META.juzStarts[j + 1] - 1 <= g) j++; return j + 1; };
+export const pageOfGid = g => { let lo = 0, hi = 603; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (PAGES[m] <= g) lo = m; else hi = m - 1; } return lo + 1; };
+
 export const Reader = {
   html(params) {
     return withAll(() => {
       const { META } = Q.qdata();
-      const p = Math.min(604, Math.max(1, +params.get('p') || 1));
-      const g1 = PAGES[p - 1];
-      const firstS = (() => { let s = 0; while (s < 113 && META.surahs[s + 1].start <= g1) s++; return META.surahs[s]; })();
-      const juz = (() => { let j = 0; while (j < 29 && META.juzStarts[j + 1] - 1 <= g1) j++; return j + 1; })();
-      const k = K(), pl = plan();
+      let p = +params.get('p');
+      const sq = +params.get('s');
+      if (!p && sq >= 1 && sq <= 114) p = pageOfGid(META.surahs[sq - 1].start);
+      p = Math.min(604, Math.max(1, p || 1));
+      const g1 = PAGES[p - 1], f = surahOf(g1), juz = juzOf(g1);
+      const k = K();
+      const I = ctx.I;
       return `
-      <header class="title-bar">${back(k ? '#/khatma' : '#/quran')}
-        <div style="flex:1;display:flex;flex-direction:column"><h1 style="font-size:18px">سورة ${firstS.name}</h1><span class="muted" style="font-size:12px">الجزء ${juz} · صفحة ${p}${pl ? ` · ورد اليوم حتى ${pl.target}` : ''}</span></div></header>
-      <main class="pad" style="margin-top:10px">
-        <div class="mushaf reader-page real" data-el="page">
-          <div class="mp-top"><span>سورة ${firstS.name}</span><span>الجزء ${arNum(juz)}</span></div>
-          <div data-el="mp">${MU.pageHTML(p, { surahName: n => META.surahs[n - 1].name })}</div>
-          <div class="mp-wait" data-el="wait"><div class="spinner"></div><span>جارٍ تحميل خط المصحف…</span></div>
-          <span class="page-num">${arNum(p)}</span></div>
-        <div class="reader-nav">
-          <a class="btn ghost" href="#/read?p=${Math.max(1, p - 1)}" ${p === 1 ? 'aria-disabled="true" style="opacity:.4;pointer-events:none"' : ''}>${ctx.I.back.replace('<svg', '<svg width="18" height="18"')} السابقة</a>
-          <a class="btn" href="#/read?p=${Math.min(604, p + 1)}" ${p === 604 ? 'aria-disabled="true" style="opacity:.4;pointer-events:none"' : ''}>التالية ${ctx.I.left.replace('<svg', '<svg width="18" height="18"')}</a>
+      <div class="mreader" data-el="reader" data-p="${p}">
+        <header class="mr-top">
+          <a class="mr-ic" href="${k ? '#/khatma' : '#/quran'}" aria-label="رجوع">${I.back}</a>
+          <button class="mr-pill" data-act="index">${f.s}-${f.m.name} <span>(الجزء ${juz})</span></button>
+          <button class="mr-ic" data-act="tools" aria-label="الأدوات"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+        </header>
+        <div class="mr-stage" data-el="stage">
+          <div class="mr-page ${p % 2 ? 'odd' : 'even'}" data-el="page">
+            <div class="mr-text" data-el="mp">${MU.pageHTML(p, { surahName: n => META.surahs[n - 1].name })}</div>
+            <div class="mp-wait" data-el="wait"><div class="spinner"></div><span>جارٍ تحميل خط المصحف…</span></div>
+          </div>
         </div>
-        <p class="muted" style="font-size:12px;text-align:center">اسحب يمين ويسار للتقليب · اضغط على الآية لتفسيرها<br>مصحف المدينة النبوية · خط مجمع الملك فهد (١٤٤١هـ)</p>
-      </main>`;
+        <footer class="mr-bot">
+          <span>الجزء ${arNum(juz)}</span>
+          <button class="mr-num" data-act="goto">${arNum(p)}</button>
+          <span>مصحف المدينة · حفص</span>
+        </footer>
+      </div>`;
     });
   },
   mount(root, params) {
-    if (!(Q.ready() && PAGES)) return;
-    const p = Math.min(604, Math.max(1, +params.get('p') || 1));
-    const pageEl = root.querySelector('[data-el="page"]');
+    if (!(Q.ready() && PAGES && MU.mushafReady())) return;
+    const reader = root.querySelector('[data-el="reader"]');
+    const p = +reader.dataset.p;
+    document.body.classList.add('reading');
+    history.replaceState(null, '', `#/read?p=${p}`);
+    const pageEl = root.querySelector('[data-el="page"]'), stage = root.querySelector('[data-el="stage"]');
     if (lastReadPage && Math.abs(lastReadPage - p) === 1 && FX.motionOK()) pageEl.classList.add(p > lastReadPage ? 'turn-next' : 'turn-prev');
     lastReadPage = p;
+    store.get().lastPage = p; store.save();
     const k = K();
     if (k && !k.done) {
       const before = k.page || 1;
@@ -465,41 +490,117 @@ export const Reader = {
       }
       if (p === 604) { k.done = true; store.save(); setTimeout(() => FX.celebrate('ختمت القرآن الكريم', 'اللهم ارحمني بالقرآن واجعله لي إماماً ونوراً وهدى ورحمة'), 500); }
     }
-    const { META } = Q.qdata();
-    const label = g => { let s = 0; while (s < 113 && META.surahs[s + 1].start <= g) s++; return `سورة ${META.surahs[s].name} · الآية ${g - META.surahs[s].start + 1}`; };
+    const { META, TEXT } = Q.qdata();
     const mp = root.querySelector('[data-el="mp"]'), wait = root.querySelector('[data-el="wait"]');
-    const bindText = () => root.querySelectorAll('.ayah').forEach(el => {
-      const open = () => showTafsir(+el.dataset.g, el.dataset.t);
-      el.addEventListener('click', open);
-      el.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
-    });
-    const show = () => { const pg = mp.querySelector('.mpage'); MU.fitPage(pg); pg.classList.add('ready'); wait.remove(); };
+    const go = np => { np = Math.min(604, Math.max(1, np)); if (np !== p) location.hash = `#/read?p=${np}`; };
+
+    // fill the screen: width decides the font size, height spreads the 15 lines like a printed page
+    const fit = () => {
+      const pg = mp.querySelector('.mpage.ready'); if (!pg) return;
+      MU.fitPage(pg);
+      const fs = parseFloat(pg.style.getPropertyValue('--mfs')) || 20;
+      const lines = pg.querySelectorAll('.ml').length || 15;
+      const avail = pageEl.clientHeight - 16;
+      let lh = avail / Math.max(lines, p <= 2 ? 11 : 15);
+      if (lh < fs * 1.55) { // short screen: shrink the font so all lines fit
+        const nfs = avail / (Math.max(lines, 15) * 1.6);
+        pg.style.setProperty('--mfs', `${Math.min(fs, nfs).toFixed(2)}px`);
+        lh = avail / Math.max(lines, 15);
+      }
+      pg.style.setProperty('--mlh', `${Math.min(lh, fs * 2.4).toFixed(2)}px`);
+    };
+    const show = () => { const pg = mp.querySelector('.mpage'); pg.classList.add('ready'); fit(); wait.remove(); };
     MU.fontsFor(p).then(show).catch(() => {
-      // fonts not reachable (first time offline) → readable text fallback
-      mp.innerHTML = textPageHTML(p); wait.remove(); pageEl.classList.remove('real'); bindText();
+      mp.innerHTML = `<div class="mushaf-fallback">${textPageHTML(p)}</div>`; wait.remove(); pageEl.classList.add('plain');
       ctx.toast('خط المصحف بحتاج إنترنت أول مرة — عرضنا النص العادي');
     });
-    this._fit = () => { const pg = mp.querySelector('.mpage.ready'); if (pg) MU.fitPage(pg); };
-    addEventListener('resize', this._fit);
+    this._fit = fit; addEventListener('resize', fit);
+
+    // tap a verse → actions; tap empty space → hide/show the bars
     mp.addEventListener('click', e => {
-      const w = e.target.closest('.mw'); if (!w) return;
-      const g = +w.dataset.g;
+      const w = e.target.closest('.mw, .ayah'); 
+      if (!w) { reader.classList.toggle('immersive'); return; }
+      const g = +w.dataset.g; if (Number.isNaN(g)) return;
       mp.querySelectorAll('.mw.sel').forEach(x => x.classList.remove('sel'));
       mp.querySelectorAll(`.mw[data-g="${g}"]`).forEach(x => x.classList.add('sel'));
-      showTafsir(g, label(g));
+      const v = surahOf(g);
+      const sh = openSheet(`
+        <div class="row between"><b style="font-size:16px">سورة ${v.m.name} · الآية ${v.a}</b><button class="icon-btn" data-act="x" aria-label="إغلاق">${ctx.I.close}</button></div>
+        <p class="sheet-ayah">${TEXT[g]}</p>
+        <div class="mr-acts">
+          <button data-a="tafsir">${ctx.I.book}<span>التفسير</span></button>
+          <button data-a="listen">${ctx.I.vol}<span>استمع</span></button>
+          <a href="#/learn?s=${v.s}&a=${v.a}&next=seqlearn">${ctx.I.quran || ctx.I.book}<span>احفظ من هون</span></a>
+          <a href="#/recite?p=${p}&fresh=1">${ctx.I.mic}<span>سمّع الصفحة</span></a>
+        </div>`, 'الآية');
+      sh.el.querySelector('[data-a="tafsir"]').addEventListener('click', () => { sh.close(); showTafsir(g, `سورة ${v.m.name} · الآية ${v.a}`); });
+      sh.el.querySelector('[data-a="listen"]').addEventListener('click', ev => {
+        const b = ev.currentTarget; b.querySelector('span').textContent = 'جارٍ التشغيل…';
+        Q.playAyahOnce(g, () => { b.querySelector('span').textContent = 'استمع'; });
+      });
+      const obs = new MutationObserver(() => { if (!document.body.contains(sh.el)) { Q.stopPlayer(); mp.querySelectorAll('.mw.sel').forEach(x => x.classList.remove('sel')); obs.disconnect(); } });
+      obs.observe(document.body, { childList: true });
     });
-    let x0 = null, y0 = null;
-    pageEl.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
-    pageEl.addEventListener('touchend', e => {
+
+    // surah index
+    root.querySelector('[data-act="index"]').addEventListener('click', () => {
+      const cur = surahOf(PAGES[p - 1]).s;
+      const sh = openSheet(`
+        <div class="row between"><b style="font-size:16px">فهرس السور</b><button class="icon-btn" data-act="x" aria-label="إغلاق">${ctx.I.close}</button></div>
+        <input class="mr-search" type="search" placeholder="ابحث عن سورة" data-el="q">
+        <div class="mr-index" data-el="list">${META.surahs.map((m, i) => `<button data-p="${pageOfGid(m.start)}" data-name="${m.name}" class="${i + 1 === cur ? 'cur' : ''}"><b>${i + 1}</b><span>${m.name}</span><small>${arNum(pageOfGid(m.start))}</small></button>`).join('')}</div>`, 'فهرس السور');
+      const list = sh.el.querySelector('[data-el="list"]');
+      list.querySelector('.cur')?.scrollIntoView({ block: 'center' });
+      sh.el.querySelector('[data-el="q"]').addEventListener('input', e => {
+        const q = e.target.value.trim();
+        list.querySelectorAll('button').forEach(b => { b.hidden = q && !b.dataset.name.includes(q) && b.querySelector('b').textContent !== q; });
+      });
+      list.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; sh.close(); go(+b.dataset.p); });
+    });
+    // go to page
+    root.querySelector('[data-act="goto"]').addEventListener('click', () => {
+      const sh = openSheet(`
+        <div class="row between"><b style="font-size:16px">اذهب لصفحة</b><button class="icon-btn" data-act="x" aria-label="إغلاق">${ctx.I.close}</button></div>
+        <div class="grid2"><input class="mr-search" type="number" inputmode="numeric" min="1" max="604" value="${p}" data-el="n"><button class="btn" data-act="ok">اذهب</button></div>
+        <div class="mr-juz">${Array.from({ length: 30 }, (_, j) => `<button data-p="${pageOfGid(META.juzStarts[j] - 1)}">الجزء ${arNum(j + 1)}</button>`).join('')}</div>`, 'اذهب لصفحة');
+      const n = sh.el.querySelector('[data-el="n"]');
+      sh.el.querySelector('[data-act="ok"]').addEventListener('click', () => { const v = Math.round(+n.value); if (v >= 1 && v <= 604) { sh.close(); go(v); } else ctx.toast('من 1 لـ 604'); });
+      sh.el.querySelector('.mr-juz').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { sh.close(); go(+b.dataset.p); } });
+    });
+    // tools
+    root.querySelector('[data-act="tools"]').addEventListener('click', () => {
+      const v = surahOf(PAGES[p - 1]);
+      openSheet(`
+        <div class="row between"><b style="font-size:16px">الأدوات</b><button class="icon-btn" data-act="x" aria-label="إغلاق">${ctx.I.close}</button></div>
+        <div class="mr-tools">
+          <a href="#/recite?p=${p}&fresh=1">${ctx.I.mic}<span>تسميع حي لهالصفحة</span></a>
+          <a href="#/surah?s=${v.s}">${ctx.I.book}<span>حفظ سورة ${v.m.name} وتنزيل تلاوتها</span></a>
+          <a href="#/khatma">${ctx.I.check}<span>ختمتي وورد القراءة</span></a>
+          <a href="#/quran">${ctx.I.quran || ctx.I.book}<span>زاوية التحفيظ</span></a>
+        </div>`, 'الأدوات');
+    });
+
+    // swipe to turn pages (RTL: swipe right → next page), with the page following the finger
+    let x0 = null, y0 = null, dx = 0, moving = false;
+    stage.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; moving = false; }, { passive: true });
+    stage.addEventListener('touchmove', e => {
       if (x0 == null) return;
-      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
-      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        // RTL: swipe right → next page
-        const np = dx > 0 ? Math.min(604, p + 1) : Math.max(1, p - 1);
-        if (np !== p) location.hash = `#/read?p=${np}`;
-      }
+      dx = e.touches[0].clientX - x0; const dy = e.touches[0].clientY - y0;
+      if (!moving && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) moving = true;
+      if (moving) pageEl.style.transform = `translateX(${dx * 0.6}px)`;
+    }, { passive: true });
+    stage.addEventListener('touchend', () => {
+      if (x0 == null) return;
+      pageEl.style.transform = '';
+      if (moving && Math.abs(dx) > 60) go(dx > 0 ? p + 1 : p - 1);
       x0 = null;
     });
+    this._key = e => { if (e.key === 'ArrowLeft') go(p + 1); if (e.key === 'ArrowRight') go(p - 1); };
+    addEventListener('keydown', this._key);
   },
-  unmount() { if (this._fit) removeEventListener('resize', this._fit); }
+  unmount() {
+    if (this._fit) removeEventListener('resize', this._fit);
+    if (this._key) removeEventListener('keydown', this._key);
+    document.body.classList.remove('reading');
+  }
 };

@@ -469,7 +469,7 @@ export const Surah = {
       for (let a = 1; a <= m.count; a++) {
         const it = items[m.start + a - 1];
         const cls = !it ? '' : it.b === 0 ? 'weak' : it.d <= now ? 'due' : 'mem';
-        body += `<span class="ayah ${cls}" role="link" tabindex="0" data-a="${a}">${TEXT[m.start + a - 1]} ${marker(a)}</span> `;
+        body += `<span class="ayah ${cls}" role="link" tabindex="0" data-a="${a}" aria-label="الآية ${a}">${a}</span>`;
       }
       const h = H();
       const isPlan = h.plan && h.plan.s === s;
@@ -483,17 +483,21 @@ export const Surah = {
         </div>
         <a class="btn ghost" href="#/recite?s=${s}&fresh=1">${ctx.I.mic.replace('<svg', '<svg width="18" height="18"')} تسميع حي لأول صفحة بالسورة</a>
         <div class="dl-row" data-el="dl">${dlRowHTML(s)}</div>
-        <div class="mushaf book-open">
-          ${surahBanner(s)}
-          ${s !== 1 && s !== 9 ? `<p class="basmala">${BASMALA}</p>` : ''}
-          <p class="mushaf-text">${body}</p>
-        </div>
+        <a class="card mr-open" href="#/read?s=${s}">
+          <span class="mr-open-ic">${ctx.I.quran.replace('<svg', '<svg width="30" height="30"')}</span>
+          <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">اقرأ سورة ${m.name} بالمصحف</b>
+          <span class="muted" style="font-size:12.5px">صفحات مصحف المدينة · قلّب بالسحب</span></span>
+          ${ctx.I.left.replace('<svg', '<svg width="20" height="20"')}</a>
+        <section class="card stack" style="gap:10px">
+          <b style="font-size:15px">آيات السورة (${m.count})</b>
+          <div class="ayah-grid">${body}</div>
+        </section>
         <div class="lg-row" style="justify-content:center">
           <span class="lg"><i style="background:var(--ok-soft);border:1px solid var(--primary)"></i>محفوظة</span>
           <span class="lg"><i style="background:var(--gold-soft);border:1px solid var(--gold)"></i>مستحقة للمراجعة</span>
           <span class="lg"><i style="background:#F8E6DC;border:1px solid #B4541E"></i>ضعيفة</span>
         </div>
-        <p class="muted" style="font-size:12px;text-align:center;margin:0">اضغط على أي آية لتحفظها مع القارئ</p>
+        <p class="muted" style="font-size:12px;text-align:center;margin:0">اضغط على رقم أي آية لتحفظها مع القارئ</p>
       </main>`;
     });
   },

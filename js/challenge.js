@@ -103,7 +103,7 @@ export async function watch(cb, onError) {
   unsubs.push(fs.onSnapshot(fs.query(fs.collection(db, 'circles', s.circle.code, 'members'), fs.limit(100)), snap => {
     members = snap.docs.map(d => ({ id: d.id, ...d.data() })); emit();
     // restored from a backup on a new install (new anonymous id): quietly re-join the same circle
-    if (!snap.metadata.fromCache && !rejoined && !members.some(m => m.id === uid)) {
+    if (snap.metadata && !snap.metadata.fromCache && !rejoined && !members.some(m => m.id === uid)) {
       rejoined = true;
       fs.setDoc(fs.doc(db, 'circles', s.circle.code, 'members', uid), {
         name: s.settings.name || '', joinedAt: fs.serverTimestamp(), lastActive: ''
