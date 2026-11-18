@@ -78,7 +78,11 @@ function S() {
   return s.sadaqa;
 }
 const dayNo = () => Math.floor((Date.now() + 2 * 3600000) / 86400000);
-export const nameOfDay = () => MARTYRS.length ? MARTYRS[dayNo() % MARTYRS.length] : null;
+export const nameOfDay = () => {
+  if (!MARTYRS.length) return null;
+  const d = new Date(dayNo() * 86400000), md = String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+  return MARTYRS.find(m => m.day === md) || MARTYRS[dayNo() % MARTYRS.length];
+};
 const idxOf = who => MARTYRS.indexOf(who);
 const initial = n => n.trim().charAt(0);
 
