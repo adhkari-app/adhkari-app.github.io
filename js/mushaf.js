@@ -8,13 +8,14 @@ export const HEADER_FONT_URL = `${PKG}QCF4_QBSML.woff2`;
 export const ALL_FONT_URLS = () => [...Array.from({ length: 47 }, (_, i) => FONT_URL(i + 1)), HEADER_FONT_URL];
 export const MUSHAF_CACHE = 'adhkari-mushaf';
 
-let DATA = null, MAP = null, loading = null;
+let DATA = null, MAP = null, WIDTH = null, loading = null;
 export function ensureMushaf() {
   if (DATA) return Promise.resolve();
   if (!loading) loading = Promise.all([
     fetch('data/mushaf-qcf4.json').then(r => r.json()),
-    fetch('data/mushaf-qcf4-map.json').then(r => r.json())
-  ]).then(([d, m]) => { DATA = d; MAP = m; }).catch(e => { loading = null; throw e; });
+    fetch('data/mushaf-qcf4-map.json').then(r => r.json()),
+    fetch('data/mushaf-qcf4-w.json').then(r => r.json()).catch(() => null)
+  ]).then(([d, m, w]) => { DATA = d; MAP = m; WIDTH = w; }).catch(e => { loading = null; throw e; });
   return loading;
 }
 export const mushafReady = () => !!DATA;
@@ -83,19 +84,31 @@ export function pageHTML(p, { surahName = s => '', arNum = n => n } = {}) {
   return `<div class="mpage ${p <= 2 ? 'center' : ''}" data-p="${p}" style="--qf:qcf${pg.f}">${lines}</div>`;
 }
 
-/** Scale the page so the longest line fills the width exactly (call after fonts load). */
+/** Scale the page so the longest line fills the width exactly (call after fonts load).
+ *  Uses widths pre-measured for every page (same font metrics on every browser), so it does
+ *  not depend on when Safari finishes laying out the font; then checks nothing overflows. */
 export function fitPage(el) {
   if (!el) return;
-  el.style.setProperty('--mfs', '100px');
-  const w = el.clientWidth;
-  let max = 0;
-  el.querySelectorAll('.ml:not(.ml-h):not(.ml-b)').forEach(line => {
-    let sum = 0; line.querySelectorAll('.mw').forEach(s => { sum += s.getBoundingClientRect().width; });
-    if (sum > max) max = sum;
-  });
-  if (!max || !w) return;
-  const fs = Math.min(100 * w / max, 46) * 0.985;
+  const w = el.clientWidth, p = +el.dataset.p;
+  if (!w) return;
+  let fs;
+  if (WIDTH && WIDTH[p - 1]) fs = 100 * w / WIDTH[p - 1];
+  else {
+    el.style.setProperty('--mfs', '100px');
+    let max = 0;
+    el.querySelectorAll('.ml:not(.ml-h):not(.ml-b)').forEach(line => {
+      let sum = 0; line.querySelectorAll('.mw').forEach(s => { sum += s.getBoundingClientRect().width; });
+      if (sum > max) max = sum;
+    });
+    if (!max) return;
+    fs = 100 * w / max;
+  }
+  fs = Math.min(fs, 46) * 0.985;
   el.style.setProperty('--mfs', `${fs.toFixed(2)}px`);
+  // safety net: if any line still overflows, shrink to fit
+  let worst = 1;
+  el.querySelectorAll('.ml').forEach(line => { if (line.scrollWidth > line.clientWidth + 1) worst = Math.min(worst, line.clientWidth / line.scrollWidth); });
+  if (worst < 1) el.style.setProperty('--mfs', `${(fs * worst * 0.99).toFixed(2)}px`);
 }
 
 /* ---------- offline download of the whole mushaf (fonts) ---------- */

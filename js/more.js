@@ -509,18 +509,19 @@ export const Reader = {
       }
       pg.style.setProperty('--mlh', `${Math.min(lh, fs * 2.4).toFixed(2)}px`);
     };
-    const show = () => { const pg = mp.querySelector('.mpage'); pg.classList.add('ready'); fit(); wait.remove(); };
+    const show = () => {
+      const pg = mp.querySelector('.mpage'); pg.classList.add('ready'); fit(); wait.remove();
+      requestAnimationFrame(fit); setTimeout(fit, 350);
+    };
     MU.fontsFor(p).then(show).catch(() => {
       mp.innerHTML = `<div class="mushaf-fallback">${textPageHTML(p)}</div>`; wait.remove(); pageEl.classList.add('plain');
       ctx.toast('خط المصحف بحتاج إنترنت أول مرة — عرضنا النص العادي');
     });
     this._fit = fit; addEventListener('resize', fit);
 
-    // tap a verse → actions; tap empty space → hide/show the bars
-    mp.addEventListener('click', e => {
-      const w = e.target.closest('.mw, .ayah'); 
-      if (!w) { reader.classList.toggle('immersive'); return; }
-      const g = +w.dataset.g; if (Number.isNaN(g)) return;
+    // tap anywhere on the page to turn it (left half → next, right half → previous, like a book read right-to-left);
+    // long-press a verse for its actions (tafsir, listen, memorize, recite)
+    const verseSheet = g => {
       mp.querySelectorAll('.mw.sel').forEach(x => x.classList.remove('sel'));
       mp.querySelectorAll(`.mw[data-g="${g}"]`).forEach(x => x.classList.add('sel'));
       const v = surahOf(g);
@@ -540,6 +541,21 @@ export const Reader = {
       });
       const obs = new MutationObserver(() => { if (!document.body.contains(sh.el)) { Q.stopPlayer(); mp.querySelectorAll('.mw.sel').forEach(x => x.classList.remove('sel')); obs.disconnect(); } });
       obs.observe(document.body, { childList: true });
+    };
+    let lpT = 0, longPressed = false, swiped = false;
+    const verseAt = t => { const w = t && t.closest && t.closest('.mw, .ayah'); const g = w ? +w.dataset.g : NaN; return Number.isNaN(g) ? null : g; };
+    stage.addEventListener('touchstart', e => {
+      longPressed = false; swiped = false; clearTimeout(lpT);
+      const g = verseAt(e.target);
+      if (g != null) lpT = setTimeout(() => { longPressed = true; ctx.vibrate(15); verseSheet(g); }, 480);
+    }, { passive: true });
+    stage.addEventListener('touchmove', () => clearTimeout(lpT), { passive: true });
+    stage.addEventListener('touchend', () => clearTimeout(lpT));
+    stage.addEventListener('contextmenu', e => { const g = verseAt(e.target); if (g != null) { e.preventDefault(); verseSheet(g); } });
+    stage.addEventListener('click', e => {
+      if (longPressed || swiped) { longPressed = false; swiped = false; return; }
+      const r = stage.getBoundingClientRect();
+      go(e.clientX < r.left + r.width / 2 ? p + 1 : p - 1);
     });
 
     // surah index
@@ -592,6 +608,7 @@ export const Reader = {
     stage.addEventListener('touchend', () => {
       if (x0 == null) return;
       pageEl.style.transform = '';
+      if (moving) swiped = true;
       if (moving && Math.abs(dx) > 60) go(dx > 0 ? p + 1 : p - 1);
       x0 = null;
     });
