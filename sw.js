@@ -1,5 +1,5 @@
 // Service worker — offline-first
-const VERSION = 'adhkari-v1.9.0';
+const VERSION = 'adhkari-v1.9.1';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './css/fonts.css', './css/style.css',

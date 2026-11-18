@@ -146,7 +146,7 @@ export const Shuhada = {
   html() {
     const I = ctx.I;
     const list = MARTYRS.length
-      ? MARTYRS.map((m, i) => `<div class="sq-name"><span class="sq-n">${arNum(i + 1)}</span><span style="flex:1"><b>${ctx.esc(m.name)}</b>${m.date ? `<small>${ctx.esc(m.date)}</small>` : ''}</span><span class="sq-r">رحمه الله</span></div>`).join('')
+      ? MARTYRS.map((m, i) => `<div class="sq-name"><span class="sq-n">${arNum(i + 1)}</span><span style="flex:1"><b>${ctx.esc(m.name)}</b>${m.date ? `<small>${ctx.esc(m.date)}</small>` : ''}</span><span class="sq-r">${m.f ? 'رحمها الله' : 'رحمه الله'}</span></div>`).join('')
       : `<p class="muted" style="text-align:center;padding:20px 0">الأسماء رح تنضاف قريباً إن شاء الله</p>`;
     return `
     <header class="title-bar"><a class="icon-btn" href="#/home" aria-label="رجوع">${I.back}</a><h1>شهداء آل الحولي</h1></header>
