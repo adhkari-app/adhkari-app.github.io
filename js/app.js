@@ -10,6 +10,8 @@ import * as circle from './challenge.js';
 
 import * as Q from './quran.js';
 import * as RC from './recite.js';
+import * as MU from './mushaf.js';
+import * as OFF from './offline.js';
 
 /* progress % that never hides a real contribution: 0.03% instead of 0% */
 function pctOf(total, goal) {
@@ -745,6 +747,37 @@ const Circle = {
 
 /* ================= STATS ================= */
 const DAY_NAMES = ['سبت', 'أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة'];
+let MUDL = null; // running full-mushaf download { done, total, ctrl }
+async function bindOffline(root) {
+  const st = root.querySelector('[data-el="mu-st"]'), act = root.querySelector('[data-el="mu-act"]');
+  if (!st) return;
+  const total = MU.ALL_FONT_URLS().length;
+  const paint = async () => {
+    if (!document.body.contains(st)) return;
+    if (MUDL) {
+      st.innerHTML = `<span class="dl-prog" style="display:block;margin:4px 0"><span style="width:${Math.round(MUDL.done / MUDL.total * 100)}%"></span></span>جارٍ التنزيل… ${MUDL.done} من ${MUDL.total}`;
+      act.innerHTML = `<button class="btn ghost sm" data-act="mu-stop">إلغاء</button>`;
+    } else {
+      const n = await MU.cachedFontCount();
+      if (n >= total) { st.textContent = 'محفوظ كامل على الجوال ✓ (604 صفحة)'; act.innerHTML = `<button class="btn ghost sm" data-act="mu-del">حذف</button>`; }
+      else { st.textContent = n ? `محفوظ ${n} من ${total} ملف — الصفحات اللي فتحتها بتنحفظ لحالها` : 'الصفحات اللي بتفتحها بتنحفظ لحالها، أو نزّله كامل (~35 ميغا)'; act.innerHTML = `<button class="btn ghost sm" data-act="mu-go">تنزيل</button>`; }
+    }
+    act.querySelector('[data-act="mu-go"]')?.addEventListener('click', async () => {
+      MUDL = { done: 0, total, ctrl: new AbortController() }; paint();
+      try { await OFF.persist(); await MU.downloadAll((d, t) => { MUDL.done = d; MUDL.total = t; paint(); }, MUDL.ctrl.signal); toast('المصحف صار محفوظ بدون نت ✓'); }
+      catch (e) { toast(MUDL.ctrl.signal.aborted ? 'انلغى التنزيل' : 'تعذّر التنزيل — تأكد من النت وجرّب كمان مرة'); }
+      MUDL = null; paint();
+    });
+    act.querySelector('[data-act="mu-stop"]')?.addEventListener('click', () => MUDL && MUDL.ctrl.abort());
+    act.querySelector('[data-act="mu-del"]')?.addEventListener('click', async () => { await MU.removeAll(); toast('انحذف المصحف المحفوظ'); paint(); });
+  };
+  paint();
+  root.querySelector('[data-act="au-del"]')?.addEventListener('click', async () => { await OFF.removeAllAudio(); toast('انحذفت كل التلاوات المحفوظة'); render(); });
+  const u = await OFF.usage();
+  const ue = root.querySelector('[data-el="usage"]');
+  if (u && ue && u.used) ue.textContent = ` · المساحة المستخدمة: ${OFF.mb(u.used)}`;
+}
+
 const Stats = {
   html() {
     const now = new Date();
@@ -814,6 +847,18 @@ const Stats = {
       ${X.badgesHTML()}
       ${RM.html()}
 
+      <section class="card" id="offline" style="padding:4px 16px">
+        <h2 style="font-size:15px;padding:14px 0 2px">بدون إنترنت</h2>
+        <p class="muted" style="font-size:12.5px;margin:0 0 4px;line-height:1.7">الأذكار والمصحف والتحفيظ والتفسير والصلاة والقبلة كلها شغّالة بدون نت. نزّل اللي تحت مرة وحدة وانت على واي فاي.</p>
+        <div class="off-row"><span class="w-ic">${I.book}</span>
+          <span class="w-tx"><b>خط المصحف</b><span data-el="mu-st">…</span></span>
+          <span data-el="mu-act"></span></div>
+        <div class="off-row"><span class="w-ic">${I.vol}</span>
+          <span class="w-tx"><b>التلاوات</b><span data-el="au-st">${(() => { const x = OFF.savedSummary(); return x.surahs ? `${x.surahs === 1 ? '' : x.surahs === 2 ? '' : x.surahs} ${x.surahs === 1 ? 'سورة وحدة' : x.surahs === 2 ? 'سورتين' : x.surahs <= 10 ? 'سور' : 'سورة'} محفوظة · ${OFF.mb(x.bytes)}` : 'نزّل أي سورة من صفحتها بالمصحف'; })()}</span></span>
+          ${OFF.savedSummary().surahs ? `<button class="btn ghost sm" data-act="au-del">حذف</button>` : ''}</div>
+        <p class="muted" style="font-size:12px;margin:0;padding:8px 0 12px;line-height:1.7;border-top:1px solid var(--line)">بحتاج نت: التسميع بالصوت (على الآيفون)، مزامنة الحلقات، والتذكيرات.<span data-el="usage"></span></p>
+      </section>
+
       <section class="card" id="settings" style="padding:4px 16px">
         <h2 style="font-size:15px;padding:14px 0 6px">الإعدادات</h2>
         <div class="setting"><label class="lbl" for="nm">اسمك<small>يظهر في التحية وفي الحلقات</small></label>
@@ -835,7 +880,7 @@ const Stats = {
         <div class="setting"><span class="lbl">مسح كل البيانات<small>العدّادات والسلاسل والإعدادات</small></span>
           <button class="btn ghost sm" data-act="wipe">مسح</button></div>
       </section>
-      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.4 · يعمل بدون إنترنت<br>نص المصحف: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
+      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 1.6 · يعمل بدون إنترنت<br>المصحف: مصحف المدينة النبوية بخط مجمع الملك فهد (QCF4) · نص الآيات: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
     </main>`;
   },
   mount(root, params) {
@@ -843,6 +888,7 @@ const Stats = {
     root.querySelector('#nm').addEventListener('change', e => { s.settings.name = e.target.value.trim().slice(0, 30); store.save(); toast('تم الحفظ'); });
     X.bindBadges(root);
     RM.bind(root);
+    bindOffline(root);
     root.querySelectorAll('[data-theme]').forEach(b => b.addEventListener('click', () => {
       s.settings.theme = b.dataset.theme; store.save(); applyTheme();
       root.querySelectorAll('[data-theme]').forEach(x => x.setAttribute('aria-pressed', x === b));
@@ -916,6 +962,7 @@ function decorate(entering) {
 }
 
 let lastRoute = '';
+window.addEventListener('offline', () => toast('انقطع النت — التطبيق شغّال بدون نت'));
 window.addEventListener('hashchange', () => {
   document.querySelectorAll('.sheet-wrap, .share-modal').forEach(el => el.remove());
   const r = parse().name;

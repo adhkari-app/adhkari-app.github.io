@@ -3,6 +3,7 @@
 import * as store from './store.js';
 import * as FX from './fx.js';
 import { shareCard } from './extras.js';
+import * as OFF from './offline.js';
 
 let ctx = null; // { I, esc, toast, vibrate, render, fmt }
 export function initQuran(c) { ctx = c; }
@@ -271,6 +272,43 @@ function surahBanner(s) {
 
 const back = (href) => `<a class="icon-btn" href="${href}" aria-label="رجوع">${ctx.I.back}</a>`;
 
+/* ---------- offline recitation download (per surah) ---------- */
+let DL = null; // { s, ed, done, total, ctrl }
+function dlRowHTML(s) {
+  const h = H(), ed = h.reciter, m = S(s);
+  if (DL && DL.s === s && DL.ed === ed) return `<div class="dl-prog"><span style="width:${Math.round(DL.done / DL.total * 100)}%"></span></div>
+    <span class="dl-tx">جارٍ تنزيل التلاوة… ${DL.done} من ${DL.total}</span><button class="link-btn" data-act="dl-stop">إلغاء</button>`;
+  if (OFF.isSaved(ed, s)) return `<span class="dl-tx ok">${ctx.I.check.replace('<svg', '<svg width="16" height="16"')} تلاوة ${reciterName(ed)} محفوظة للاستماع بدون نت</span><button class="link-btn" data-act="dl-del">حذف</button>`;
+  return `<button class="btn ghost sm dl-btn" data-act="dl-go"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>نزّل التلاوة للاستماع بدون نت</button>
+    <span class="dl-tx">${reciterName(ed)} · ${m.count} آية</span>`;
+}
+function bindDl(root, s) {
+  const box = root.querySelector('[data-el="dl"]'); if (!box) return;
+  const m = S(s), ed = H().reciter;
+  const refresh = () => { const b = document.querySelector('[data-el="dl"]'); if (b && location.hash.startsWith('#/surah')) { b.innerHTML = dlRowHTML(s); bindDl(document, s); } };
+  box.querySelector('[data-act="dl-go"]')?.addEventListener('click', async () => {
+    if (DL) return ctx.toast('في تنزيل شغّال، استنّى يخلص');
+    DL = { s, ed, done: 0, total: m.count, ctrl: new AbortController() };
+    refresh();
+    try {
+      const bytes = await OFF.downloadSurah(ed, s, m.start, m.start + m.count - 1, (d, t) => { DL.done = d; DL.total = t; refresh(); }, DL.ctrl.signal);
+      ctx.toast(`تم ✓ سورة ${m.name} صارت بدون نت (${OFF.mb(bytes)})`);
+    } catch (e) {
+      const msg = String(e && e.message || e);
+      if (e && e.name === 'AbortError') ctx.toast('انلغى التنزيل');
+      else if (e && e.name === 'QuotaExceededError') ctx.toast('ما في مساحة كافية على الجوال');
+      else if (msg === 'blocked') ctx.toast('تعذّر التنزيل — تأكد من النت أو جرّب قارئ تاني');
+      else if (msg.startsWith('partial')) ctx.toast('نزل جزء من السورة بس — جرّب كمان مرة');
+      else ctx.toast('تعذّر التنزيل');
+    }
+    DL = null; refresh();
+  });
+  box.querySelector('[data-act="dl-stop"]')?.addEventListener('click', () => DL && DL.ctrl.abort());
+  box.querySelector('[data-act="dl-del"]')?.addEventListener('click', async () => {
+    await OFF.removeSurah(ed, s, m.start, m.start + m.count - 1); ctx.toast('انحذفت التلاوة من الجوال'); refresh();
+  });
+}
+
 /* ================= QURAN HOME ================= */
 export const QuranHome = {
   html(params) {
@@ -444,6 +482,7 @@ export const Surah = {
           <a class="btn outline" href="#/test?s=${s}&a=1&next=seqtest">سمّع السورة</a>
         </div>
         <a class="btn ghost" href="#/recite?s=${s}&fresh=1">${ctx.I.mic.replace('<svg', '<svg width="18" height="18"')} تسميع حي لأول صفحة بالسورة</a>
+        <div class="dl-row" data-el="dl">${dlRowHTML(s)}</div>
         <div class="mushaf book-open">
           ${surahBanner(s)}
           ${s !== 1 && s !== 9 ? `<p class="basmala">${BASMALA}</p>` : ''}
@@ -462,6 +501,7 @@ export const Surah = {
     if (!ready()) return;
     const s = Math.min(114, Math.max(1, +params.get('s') || 1));
     const go = a => { location.hash = `#/learn?s=${s}&a=${a}&next=seqlearn`; };
+    bindDl(root, s);
     root.querySelectorAll('.ayah').forEach(el => {
       el.addEventListener('click', () => go(+el.dataset.a));
       el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(+el.dataset.a); } });

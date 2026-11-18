@@ -3,6 +3,7 @@ import * as store from './store.js';
 import * as FX from './fx.js';
 import { DUA_CATS, NAMES } from './data2.js';
 import * as Q from './quran.js';
+import * as MU from './mushaf.js';
 
 let ctx = null; // { I, esc, toast, vibrate, render, fmt, beadClick, chime, addIstighfar }
 export function initMore(c) { ctx = c; }
@@ -354,8 +355,8 @@ function plan() {
 export function khatmaSummary() { const p = plan(); return p ? { ...p, days: K().days, done: K().done } : null; }
 
 function withAll(fn) {
-  if (Q.ready() && PAGES) return fn();
-  Promise.all([Q.ensureData(), ensurePages()]).then(() => ctx.render()).catch(() => ctx.toast('تعذّر تحميل المصحف'));
+  if (Q.ready() && PAGES && MU.mushafReady()) return fn();
+  Promise.all([Q.ensureData(), ensurePages(), MU.ensureMushaf()]).then(() => ctx.render()).catch(() => ctx.toast('تعذّر تحميل المصحف'));
   return `<div class="pad" style="padding-top:35vh;text-align:center"><div class="spinner"></div><p class="muted">جارٍ تحميل المصحف…</p></div>`;
 }
 
@@ -400,11 +401,8 @@ export const Khatma = {
 };
 
 let lastReadPage = null;
-export const Reader = {
-  html(params) {
-    return withAll(() => {
+function textPageHTML(p) {
       const { META, TEXT } = Q.qdata();
-      const p = Math.min(604, Math.max(1, +params.get('p') || 1));
       const g1 = PAGES[p - 1], g2 = p < 604 ? PAGES[p] - 1 : 6235;
       let html = '', curS = -1;
       for (let g = g1; g <= g2; g++) {
@@ -422,6 +420,15 @@ export const Reader = {
         html += `<span class="ayah" role="button" tabindex="0" data-g="${g}" data-t="سورة ${m.name} · الآية ${a}">${TEXT[g]} <span class="ayah-mark">۝${arNum(a)}</span></span> `;
       }
       html += '</p>';
+      return html;
+}
+
+export const Reader = {
+  html(params) {
+    return withAll(() => {
+      const { META } = Q.qdata();
+      const p = Math.min(604, Math.max(1, +params.get('p') || 1));
+      const g1 = PAGES[p - 1];
       const firstS = (() => { let s = 0; while (s < 113 && META.surahs[s + 1].start <= g1) s++; return META.surahs[s]; })();
       const juz = (() => { let j = 0; while (j < 29 && META.juzStarts[j + 1] - 1 <= g1) j++; return j + 1; })();
       const k = K(), pl = plan();
@@ -429,12 +436,16 @@ export const Reader = {
       <header class="title-bar">${back(k ? '#/khatma' : '#/quran')}
         <div style="flex:1;display:flex;flex-direction:column"><h1 style="font-size:18px">سورة ${firstS.name}</h1><span class="muted" style="font-size:12px">الجزء ${juz} · صفحة ${p}${pl ? ` · ورد اليوم حتى ${pl.target}` : ''}</span></div></header>
       <main class="pad" style="margin-top:10px">
-        <div class="mushaf reader-page" data-el="page">${html}<span class="page-num">${arNum(p)}</span></div>
+        <div class="mushaf reader-page real" data-el="page">
+          <div class="mp-top"><span>سورة ${firstS.name}</span><span>الجزء ${arNum(juz)}</span></div>
+          <div data-el="mp">${MU.pageHTML(p, { surahName: n => META.surahs[n - 1].name })}</div>
+          <div class="mp-wait" data-el="wait"><div class="spinner"></div><span>جارٍ تحميل خط المصحف…</span></div>
+          <span class="page-num">${arNum(p)}</span></div>
         <div class="reader-nav">
           <a class="btn ghost" href="#/read?p=${Math.max(1, p - 1)}" ${p === 1 ? 'aria-disabled="true" style="opacity:.4;pointer-events:none"' : ''}>${ctx.I.back.replace('<svg', '<svg width="18" height="18"')} السابقة</a>
           <a class="btn" href="#/read?p=${Math.min(604, p + 1)}" ${p === 604 ? 'aria-disabled="true" style="opacity:.4;pointer-events:none"' : ''}>التالية ${ctx.I.left.replace('<svg', '<svg width="18" height="18"')}</a>
         </div>
-        <p class="muted" style="font-size:12px;text-align:center">اسحب يمين ويسار للتقليب · اضغط على الآية لتفسيرها</p>
+        <p class="muted" style="font-size:12px;text-align:center">اسحب يمين ويسار للتقليب · اضغط على الآية لتفسيرها<br>مصحف المدينة النبوية · خط مجمع الملك فهد (١٤٤١هـ)</p>
       </main>`;
     });
   },
@@ -454,10 +465,28 @@ export const Reader = {
       }
       if (p === 604) { k.done = true; store.save(); setTimeout(() => FX.celebrate('ختمت القرآن الكريم', 'اللهم ارحمني بالقرآن واجعله لي إماماً ونوراً وهدى ورحمة'), 500); }
     }
-    root.querySelectorAll('.ayah').forEach(el => {
+    const { META } = Q.qdata();
+    const label = g => { let s = 0; while (s < 113 && META.surahs[s + 1].start <= g) s++; return `سورة ${META.surahs[s].name} · الآية ${g - META.surahs[s].start + 1}`; };
+    const mp = root.querySelector('[data-el="mp"]'), wait = root.querySelector('[data-el="wait"]');
+    const bindText = () => root.querySelectorAll('.ayah').forEach(el => {
       const open = () => showTafsir(+el.dataset.g, el.dataset.t);
       el.addEventListener('click', open);
       el.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
+    });
+    const show = () => { const pg = mp.querySelector('.mpage'); MU.fitPage(pg); pg.classList.add('ready'); wait.remove(); };
+    MU.fontsFor(p).then(show).catch(() => {
+      // fonts not reachable (first time offline) → readable text fallback
+      mp.innerHTML = textPageHTML(p); wait.remove(); pageEl.classList.remove('real'); bindText();
+      ctx.toast('خط المصحف بحتاج إنترنت أول مرة — عرضنا النص العادي');
+    });
+    this._fit = () => { const pg = mp.querySelector('.mpage.ready'); if (pg) MU.fitPage(pg); };
+    addEventListener('resize', this._fit);
+    mp.addEventListener('click', e => {
+      const w = e.target.closest('.mw'); if (!w) return;
+      const g = +w.dataset.g;
+      mp.querySelectorAll('.mw.sel').forEach(x => x.classList.remove('sel'));
+      mp.querySelectorAll(`.mw[data-g="${g}"]`).forEach(x => x.classList.add('sel'));
+      showTafsir(g, label(g));
     });
     let x0 = null, y0 = null;
     pageEl.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
@@ -471,5 +500,6 @@ export const Reader = {
       }
       x0 = null;
     });
-  }
+  },
+  unmount() { if (this._fit) removeEventListener('resize', this._fit); }
 };

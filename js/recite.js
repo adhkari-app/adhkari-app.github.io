@@ -3,6 +3,7 @@ import * as store from './store.js';
 import * as FX from './fx.js';
 import * as Q from './quran.js';
 import * as E from './recite-engine.js';
+import * as MU from './mushaf.js';
 
 let ctx = null; // { I, esc, toast, vibrate, render, fmt, soundOn }
 export function initRecite(c) { ctx = c; }
@@ -25,8 +26,8 @@ function pageOf(g) {
   return lo + 1;
 }
 function withAll(html) {
-  if (Q.ready() && PAGES) return html();
-  Promise.all([Q.ensureData(), ensurePages()]).then(() => ctx.render()).catch(() => ctx.toast('تعذّر تحميل المصحف'));
+  if (Q.ready() && PAGES && MU.mushafReady()) return html();
+  Promise.all([Q.ensureData(), ensurePages(), MU.ensureMushaf()]).then(() => ctx.render()).catch(() => ctx.toast('تعذّر تحميل المصحف'));
   return Q.quranLoading();
 }
 
@@ -52,11 +53,11 @@ function pageTitle(st) {
 }
 
 /* ---------- session state ---------- */
-const R = { key: 0, st: null, phase: 'ready', t0: 0, spent: 0, alert: null, lastTxt: '', pass: false, when: '' };
+const R = { manual: false, key: 0, st: null, phase: 'ready', t0: 0, spent: 0, alert: null, lastTxt: '', pass: false, when: '' };
 function reset(p) {
   const [a, b] = pageRange(p);
   R.key = p; R.st = E.newState(E.buildWords(Q.qdata().TEXT, a, b, Q.surahAyah));
-  R.phase = 'ready'; R.t0 = 0; R.spent = 0; R.alert = null; R.lastTxt = ''; R.pass = false; R.when = '';
+  R.phase = 'ready'; R.t0 = 0; R.spent = 0; R.alert = null; R.lastTxt = ''; R.pass = false; R.when = ''; R.manual = false;
 }
 
 /* ---------- small sound for a mistake ---------- */
@@ -109,18 +110,19 @@ export const Recite = {
         <div class="progress rc-prog"><span data-el="prog"></span></div>
       </div>
       <main class="pad" style="margin-top:10px">
-        <div class="mushaf rc-page" data-el="page">${pageHTML(st)}</div>
+        <div class="mushaf rc-page real" data-el="page"><div data-el="mp">${MU.pageHTML(p, { surahName: n => Q.surahMeta(n).name })}</div>
+          <div class="mp-wait" data-el="wait"><div class="spinner"></div><span>جارٍ تحميل خط المصحف…</span></div></div>
       </main>
       <div class="rc-dock" data-el="dock">
         <div class="rc-alert" data-el="alert" hidden></div>
         <div class="rc-heard" data-el="heard" aria-live="polite"></div>
-        ${SR ? `
+        ${SR && !R.manual ? `
         <div class="rc-ctrls">
           <button class="rc-sb" data-act="hint"><span>${I.help || '?'}</span>تلميح (+خطأ)</button>
           <button class="rc-mic" data-act="mic" aria-label="ابدأ التسميع">${I.mic.replace('<svg', '<svg width="30" height="30"')}</button>
           <button class="rc-sb" data-act="pause"><span><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/></svg></span>إيقاف مؤقت</button>
         </div>` : `
-        <p class="rc-nosr">التعرّف على الصوت مش متاح بهالمتصفح — سمّع بصوت عالي واكشف كلمة كلمة:</p>
+        <p class="rc-nosr">${R.manual ? 'التعرّف على الصوت بحتاج نت هلأ' : 'التعرّف على الصوت مش متاح بهالمتصفح'} — سمّع بصوت عالي واكشف كلمة كلمة:${R.manual && SR ? ' <button class="link-btn" data-act="voice-again">جرّب الصوت</button>' : ''}</p>
         <div class="grid2 rc-manual">
           <button class="btn ghost big" data-act="hint" style="color:var(--gold-ink)">غلطت / نسيت</button>
           <button class="btn big" data-act="okword">صح ✓</button>
@@ -130,7 +132,7 @@ export const Recite = {
   },
 
   mount(root, params) {
-    if (!(Q.ready() && PAGES)) return;
+    if (!(Q.ready() && PAGES && MU.mushafReady())) return;
     const pick = root.querySelector('[data-el="picker"]');
     if (pick) return mountPicker(root);
     if (R.phase === 'result') return mountResult(root);
@@ -138,8 +140,35 @@ export const Recite = {
     const $ = sel => root.querySelector(sel);
     const mistEl = $('[data-el="mist"]'), progEl = $('[data-el="prog"]'), heardEl = $('[data-el="heard"]');
     const alertEl = $('[data-el="alert"]'), mic = $('[data-act="mic"]');
-    const wordEls = [...root.querySelectorAll('.rw')];
-    const amEls = [...root.querySelectorAll('[data-am]')];
+    // word k of the engine → the span(s) that show it; verse ends → their marker spans
+    let wordEls = [], amEls = [];
+    const pageEl = $('[data-el="page"]'), mpEl = $('[data-el="mp"]');
+    const bindMushaf = () => {
+      const byG = {};
+      mpEl.querySelectorAll('.mw').forEach(el => {
+        const g = +el.dataset.g, b = byG[g] || (byG[g] = { w: [], e: [] });
+        (el.dataset.kind === 'w' ? b.w : b.e).push(el);
+      });
+      wordEls = st.words.map(() => []); amEls = [];
+      const byVerse = {};
+      st.words.forEach((w, k) => { (byVerse[w.g] || (byVerse[w.g] = [])).push(k); });
+      Object.entries(byVerse).forEach(([g, ks]) => {
+        const b = byG[g] || { w: [], e: [] };
+        const real = ks.filter(k => !st.words[k].skip);
+        const groups = MU.tokenGlyphs(+g, real.length);
+        real.forEach((k, t) => { wordEls[k] = (groups[t] || []).map(i => b.w[i]).filter(Boolean); });
+        b.w.forEach(el => el.classList.add('rw'));
+        b.e.forEach(el => { el.classList.add('rc-am'); amEls.push({ k: ks[ks.length - 1], el }); });
+      });
+    };
+    const bindText = () => {
+      mpEl.innerHTML = pageHTML(st);
+      pageEl.classList.remove('real');
+      const spans = [...mpEl.querySelectorAll('.rw')];
+      wordEls = spans.map(el => [el]);
+      amEls = [...mpEl.querySelectorAll('[data-am]')].map(el => ({ k: +el.dataset.am, el }));
+    };
+    bindMushaf();
 
     const paint = () => {
       const n = st.mistakes.length;
@@ -147,11 +176,15 @@ export const Recite = {
         <span class="rc-dots">${Array.from({ length: MAX }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
       mistEl.classList.toggle('alarm', R.phase === 'alert');
       progEl.style.width = `${(st.k / total) * 100}%`;
-      wordEls.forEach((el, k) => {
+      wordEls.forEach((els, k) => {
         const w = st.words[k];
-        el.className = 'rw ' + (w.st === 1 ? 'ok' : w.st === 2 ? 'bad' : 'h') + (k === st.k && R.phase !== 'alert' ? ' cur' : '');
+        const on = w.st === 1 ? 'ok' : w.st === 2 ? 'bad' : 'h', cur = k === st.k && R.phase !== 'alert';
+        els.forEach(el => {
+          el.classList.remove('ok', 'bad', 'h', 'cur'); el.classList.add('rw', on);
+          if (cur) el.classList.add('cur');
+        });
       });
-      amEls.forEach(el => { const k = +el.dataset.am; el.classList.toggle('on', st.words[k].st > 0); });
+      amEls.forEach(({ k, el }) => el.classList.toggle('on', st.words[k].st > 0));
       if (mic) {
         mic.classList.toggle('on', V.on);
         mic.setAttribute('aria-label', V.on ? 'إيقاف الاستماع' : 'ابدأ التسميع');
@@ -161,7 +194,9 @@ export const Recite = {
         : `<span class="muted">متوقف — اضغط المايك لتكمل</span>`;
     };
     const follow = () => {
-      const el = wordEls[Math.min(st.k, total - 1)]; if (!el) return;
+      let el = null;
+      for (let k = Math.min(st.k, total - 1); k >= 0 && !el; k--) el = wordEls[k] && wordEls[k][0];
+      if (!el) return;
       const dock = $('[data-el="dock"]'), r = el.getBoundingClientRect();
       const limit = innerHeight - (dock ? dock.offsetHeight : 200) - 90;
       if (r.bottom > limit) window.scrollBy({ top: r.bottom - limit + 60, behavior: 'smooth' });
@@ -243,7 +278,7 @@ export const Recite = {
         if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
           stopRec(); paint();
           heardEl.innerHTML = `<span class="bad">ما في إذن للمايك.</span> اسمح للتطبيق بالمايك والتعرّف على الكلام من الإعدادات، أو افتح الموقع من Safari.`;
-        } else if (ev.error === 'network') { stopRec(); paint(); ctx.toast('التسميع بالصوت بحتاج إنترنت'); }
+        } else if (ev.error === 'network') { stopRec(); R.manual = true; ctx.toast('ما في نت — كمّل التسميع يدوي'); ctx.render(); }
         else if (ev.error === 'audio-capture') { stopRec(); paint(); ctx.toast('المايك مش متاح — سكّر أي تطبيق تاني بيستخدمه'); }
       };
       rec.onend = () => {
@@ -298,10 +333,18 @@ export const Recite = {
       while (st.k < total && st.words[st.k].skip) { st.words[st.k].st = 1; st.k++; }
       afterProgress();
     });
+    root.querySelector('[data-act="voice-again"]')?.addEventListener('click', () => { R.manual = false; ctx.render(); });
     root.querySelector('[data-act="restart"]').addEventListener('click', () => {
       stopRec(); Q.stopPlayer(); reset(R.key); ctx.render(); window.scrollTo(0, 0);
     });
 
+    const wait = $('[data-el="wait"]');
+    MU.fontsFor(R.key).then(() => {
+      const pg = mpEl.querySelector('.mpage'); if (!pg) return;
+      MU.fitPage(pg); pg.classList.add('ready'); wait && wait.remove(); paint();
+    }).catch(() => { wait && wait.remove(); bindText(); paint(); });
+    this._fit = () => { const pg = mpEl.querySelector('.mpage.ready'); if (pg) MU.fitPage(pg); };
+    addEventListener('resize', this._fit);
     paint();
     if (R.phase === 'alert' && R.alert) showAlert(R.alert);
     this._vis = () => { if (document.hidden) pause(); };
@@ -312,6 +355,7 @@ export const Recite = {
     stopRec(); Q.stopPlayer();
     if (R.t0) { R.spent += Date.now() - R.t0; R.t0 = 0; }
     if (this._vis) document.removeEventListener('visibilitychange', this._vis);
+    if (this._fit) removeEventListener('resize', this._fit);
   }
 };
 
