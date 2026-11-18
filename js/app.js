@@ -12,6 +12,7 @@ import * as Q from './quran.js';
 import * as RC from './recite.js';
 import * as MU from './mushaf.js';
 import * as OFF from './offline.js';
+import * as BK from './backup.js';
 
 /* progress % that never hides a real contribution: 0.03% instead of 0% */
 function pctOf(total, goal) {
@@ -747,6 +748,47 @@ const Circle = {
 
 /* ================= STATS ================= */
 const DAY_NAMES = ['سبت', 'أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة'];
+function bindBackup(root) {
+  const panel = root.querySelector('[data-el="bk-panel"]'), file = root.querySelector('[data-el="bk-file"]');
+  if (!panel) return;
+  const showRestore = data => {
+    const x = BK.summary(data);
+    panel.hidden = false;
+    panel.innerHTML = `<div class="bk-box"><b>لقينا نسخة فيها:</b>
+      <span>${x.hifz} آية محفوظة · ${x.days} يوم نشاط · ${x.tasbeeh.toLocaleString('ar')} تسبيحة</span>
+      <span class="muted" style="font-size:12px">رح تحل محل البيانات الموجودة هلأ على هالجوال.</span>
+      <div class="grid2"><button class="btn ghost" data-act="bk-cancel">إلغاء</button><button class="btn" data-act="bk-ok">استرجع</button></div></div>`;
+    panel.querySelector('[data-act="bk-cancel"]').addEventListener('click', () => { panel.hidden = true; panel.innerHTML = ''; });
+    panel.querySelector('[data-act="bk-ok"]').addEventListener('click', () => BK.restore(data));
+  };
+  const tryText = async text => {
+    try { showRestore(await BK.readCode(text)); }
+    catch (e) { toast('هاد مش رمز نسخة احتياطية من أذكاري'); }
+  };
+  root.querySelector('[data-act="bk-save"]').addEventListener('click', async () => {
+    const code = await BK.makeCode();
+    const f = new File([code], BK.fileName(), { type: 'text/plain' });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'نسخة أذكاري الاحتياطية' }); toast('احفظ الملف بمكان بتلاقيه (الملفات أو الملاحظات)'); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(code); toast('انسخ الرمز ✓ — الصقه بالملاحظات وخلّيه عندك'); }
+    catch (e) {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('نزل ملف النسخة الاحتياطية');
+    }
+  });
+  root.querySelector('[data-act="bk-restore"]').addEventListener('click', () => {
+    panel.hidden = false;
+    panel.innerHTML = `<div class="bk-box"><b>من وين بدك تسترجع؟</b>
+      <button class="btn outline" data-act="bk-pick">اختار ملف النسخة</button>
+      <textarea data-el="bk-code" rows="3" placeholder="أو الصق الرمز هون (بيبدأ بـ ADHKARI)" dir="ltr"></textarea>
+      <button class="btn ghost" data-act="bk-paste">استرجع من الرمز</button></div>`;
+    panel.querySelector('[data-act="bk-pick"]').addEventListener('click', () => file.click());
+    panel.querySelector('[data-act="bk-paste"]').addEventListener('click', () => tryText(panel.querySelector('[data-el="bk-code"]').value));
+  });
+  file.addEventListener('change', async () => { const f = file.files[0]; if (f) tryText(await f.text()); file.value = ''; });
+}
+
 let MUDL = null; // running full-mushaf download { done, total, ctrl }
 async function bindOffline(root) {
   const st = root.querySelector('[data-el="mu-st"]'), act = root.querySelector('[data-el="mu-act"]');
@@ -847,6 +889,17 @@ const Stats = {
       ${X.badgesHTML()}
       ${RM.html()}
 
+      <section class="card stack" id="backup" style="gap:10px">
+        <h2 style="font-size:15px">نسخة احتياطية</h2>
+        <p class="muted" style="font-size:12.5px;margin:0;line-height:1.7">احفظ كل تقدّمك (المحفوظات، السلسلة، الإحصائيات، الإعدادات) بملف أو رمز، وارجعه بعدين — مثلاً قبل ما تحذف التطبيق وتضيفه من جديد.</p>
+        <div class="grid2">
+          <button class="btn" data-act="bk-save">${I.share.replace('<svg', '<svg width="18" height="18"')} احفظ نسخة</button>
+          <button class="btn outline" data-act="bk-restore">استرجع نسخة</button>
+        </div>
+        <div data-el="bk-panel" hidden></div>
+        <input type="file" accept=".txt,.json,text/plain,application/json" data-el="bk-file" hidden>
+      </section>
+
       <section class="card" id="offline" style="padding:4px 16px">
         <h2 style="font-size:15px;padding:14px 0 2px">بدون إنترنت</h2>
         <p class="muted" style="font-size:12.5px;margin:0 0 4px;line-height:1.7">الأذكار والمصحف والتحفيظ والتفسير والصلاة والقبلة كلها شغّالة بدون نت. نزّل اللي تحت مرة وحدة وانت على واي فاي.</p>
@@ -889,6 +942,7 @@ const Stats = {
     X.bindBadges(root);
     RM.bind(root);
     bindOffline(root);
+    bindBackup(root);
     root.querySelectorAll('[data-theme]').forEach(b => b.addEventListener('click', () => {
       s.settings.theme = b.dataset.theme; store.save(); applyTheme();
       root.querySelectorAll('[data-theme]').forEach(x => x.setAttribute('aria-pressed', x === b));

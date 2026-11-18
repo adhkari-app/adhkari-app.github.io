@@ -791,3 +791,5 @@ body.khushu{--rc-bad:#E07A6B;--rc-bad-bg:rgba(224,122,107,.14);--rc-bar:#21463F;
 .off-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
 .off-row:first-of-type{border-top:0}
 .off-row .w-tx span{line-height:1.6}
+.bk-box{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--parch)}
+.bk-box textarea{width:100%;font:13px ui-monospace,monospace;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);resize:vertical}

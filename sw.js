@@ -1,9 +1,9 @@
 // Service worker — offline-first
-const VERSION = 'adhkari-v1.6.1';
+const VERSION = 'adhkari-v1.7.0';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './css/fonts.css', './css/style.css',
-  './js/app.js', './js/store.js', './js/data.js', './js/sun.js', './js/challenge.js', './js/firebase-config.js', './js/quran.js', './js/fx.js', './js/extras.js', './js/prayer.js', './js/more.js', './js/data2.js', './js/reminders.js', './js/recite.js', './js/recite-engine.js', './js/mushaf.js', './js/offline.js',
+  './js/app.js', './js/store.js', './js/data.js', './js/sun.js', './js/challenge.js', './js/firebase-config.js', './js/quran.js', './js/fx.js', './js/extras.js', './js/prayer.js', './js/more.js', './js/data2.js', './js/reminders.js', './js/recite.js', './js/recite-engine.js', './js/mushaf.js', './js/offline.js', './js/backup.js',
   './data/quran-pages.json', './data/mushaf-qcf4.json', './data/mushaf-qcf4-map.json',
   './data/quran-meta.json', './data/quran-text.json',
   './fonts/amiri-quran-arabic-400-normal.woff2', './fonts/amiri-quran-latin-400-normal.woff2',

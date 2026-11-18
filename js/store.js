@@ -47,8 +47,8 @@ export function day(key = dateKey()) {
 export function activity(key) {
   const d = state.days[key];
   if (!d) return 0;
-  const adhkarTaps = Object.values(d.m).reduce((a, b) => a + b, 0) + Object.values(d.e).reduce((a, b) => a + b, 0);
-  return d.t + adhkarTaps + (d.q || 0) * 5;
+  const adhkarTaps = Object.values(d.m || {}).reduce((a, b) => a + b, 0) + Object.values(d.e || {}).reduce((a, b) => a + b, 0);
+  return (d.t || 0) + adhkarTaps + (d.q || 0) * 5;
 }
 
 export const isActive = key => activity(key) > 0;
