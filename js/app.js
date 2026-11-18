@@ -254,13 +254,13 @@ const Home = {
           <h1>${greet}</h1>
           <span class="date">${esc(hijri(now))}</span>
         </div>
-        <a class="icon-btn" href="#/stats?s=settings" aria-label="الإعدادات">${I.gear}</a>
+        <div class="row" style="gap:8px"><a class="streak-chip" href="#/stats" aria-label="سلسلة الأيام">${I.flame}<b>${store.streak()}</b></a>
+        <a class="icon-btn" href="#/stats?s=settings" aria-label="الإعدادات">${I.gear}</a></div>
       </div>
       <p class="verse">﴿${verse.text}﴾<small>${verse.ref}</small></p>
     </header>
     <main class="pad overlap stack stagger">
       <section class="card raised stack" aria-live="polite">${nowCard}</section>
-      ${SQ.cardHTML()}
       ${(() => { try {
         const np = P.nextPrayer(now), mins = Math.max(0, Math.round((np.time - now) / 60000));
         const left = mins >= 60 ? `${Math.floor(mins / 60)} س ${mins % 60} د` : `${mins} دقيقة`;
@@ -270,34 +270,38 @@ const Home = {
           <span class="ps-left">بعد ${left}</span></a>
           ${fh ? `<a class="fast-hint" href="#/calendar">${I.cal.replace('<svg', '<svg width="18" height="18"')}<span>${fh}</span></a>` : ''}`;
       } catch (e) { return ''; } })()}
-      <div class="tiles">
-        <a class="tile-btn" href="#/prayer">${I.compass}<span>الصلاة والقبلة</span></a>
-        <a class="tile-btn" href="#/duas">${I.hands}<span>الأدعية</span></a>
-        <a class="tile-btn" href="#/names">${I.star}<span>الأسماء الحسنى</span></a>
-        <a class="tile-btn" href="#/calendar">${I.cal}<span>التقويم</span></a>
-        <a class="tile-btn" href="#/read?p=${s.lastPage || 1}">${I.quran || I.book}<span>المصحف</span></a>
-        <a class="tile-btn" href="#/garden">${I.palm}<span>الحديقة</span></a>
-      </div>
+      <section class="qgrid" aria-label="الأقسام">
+        <a href="#/read?p=${s.lastPage || 1}"><span>${I.quran}</span>المصحف</a>
+        <a href="#/tasbeeh"><span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="19.0" cy="10.5" r="1.7"/><circle cx="18.1" cy="14.0" r="1.7"/><circle cx="15.5" cy="16.6" r="1.7"/><circle cx="12.0" cy="17.5" r="1.7"/><circle cx="8.5" cy="16.6" r="1.7"/><circle cx="5.9" cy="14.0" r="1.7"/><circle cx="5.0" cy="10.5" r="1.7"/><circle cx="5.9" cy="7.0" r="1.7"/><circle cx="8.5" cy="4.4" r="1.7"/><circle cx="12.0" cy="3.5" r="1.7"/><circle cx="15.5" cy="4.4" r="1.7"/><circle cx="18.1" cy="7.0" r="1.7"/><path d="M12 17.5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>السبحة</a>
+        <a href="#/quran"><span>${I.book}</span>التحفيظ</a>
+        <a href="#/duas"><span>${I.hands}</span>الأدعية</a>
+        <a href="#/prayer"><span>${I.compass}</span>الصلاة والقبلة</a>
+        <a href="#/names"><span>${I.star}</span>الأسماء الحسنى</a>
+        <a href="#/calendar"><span>${I.cal}</span>التقويم</a>
+        <a href="#/circle"><span>${I.users}</span>الحلقة</a>
+      </section>
+      ${(() => {
+        const mL = adhkarFor('morning'), eL = adhkarFor('evening');
+        const mN = mL.filter(a => (d.m[a.id] || 0) >= a.count).length, eN = eL.filter(a => (d.e[a.id] || 0) >= a.count).length;
+        const q = Q.summary();
+        const k = M.khatmaSummary ? M.khatmaSummary() : null;
+        const row = (ok, icon, title, sub, href) => `<a class="wd-row" href="${href}"><span class="wd-ic ${ok ? 'ok' : ''}">${ok ? I.check : icon}</span><span class="wd-tx"><b>${title}</b><span>${sub}</span></span>${I.left.replace('<svg', '<svg width="18" height="18"')}</a>`;
+        const rows = [
+          row(d.md, I.sun, 'أذكار الصباح', d.md ? 'تمّت، تقبّل الله' : `${mN} من ${mL.length}`, '#/adhkar?p=morning'),
+          row(d.ed, I.moon, 'أذكار المساء', d.ed ? 'تمّت، تقبّل الله' : `${eN} من ${eL.length}`, '#/adhkar?p=evening'),
+          row(d.i >= 100, I.star, 'الاستغفار', `${fmt(d.i)} مرة اليوم${d.i < 100 ? ' · الهدف ١٠٠' : ''}`, '#/tasbeeh'),
+          q && q.plan ? row(q.newToday >= q.goal && !q.due, I.quran, 'ورد الحفظ', `${q.newToday} من ${q.goal} آيات${q.due ? ` · ${q.due} للمراجعة` : ''}`, '#/quran')
+                      : row(false, I.quran, 'ورد الحفظ', 'ابدأ خطة حفظ بسيطة', '#/quran'),
+          k && !k.done ? row(k.page >= k.target, I.book, 'ورد القراءة', `صفحة ${k.fromP}–${k.target} · وصلت ${k.page}`, `#/read?p=${k.page}`)
+                       : row(false, I.book, 'ورد القراءة', 'اعمل ختمة بخطة يومية', '#/khatma'),
+          row(false, I.palm, 'حديقتك في الجنة', X.palms() ? `${fmt(X.palms())} نخلة` : 'ازرع أول نخلة', '#/garden'),
+        ];
+        const done = [d.md, d.ed, d.i >= 100].filter(Boolean).length;
+        return `<section class="card wd-card"><div class="row between"><h2 style="font-size:16px">وردي اليوم</h2><span class="chip gold">${done} من 3</span></div>${rows.join('')}</section>`;
+      })()}
+      ${SQ.cardHTML()}
+      ${s.circle ? circleCard : ''}
       ${s.settings.loc ? '' : `<button class="loc-hint" data-act="loc">${I.pin}<span>الأوقات محسوبة لغزة. اضغط لتحديد موقعك وضبط أوقات الأذكار بدقة.</span></button>`}
-      <div class="grid2">
-        <a class="card stat-card" href="#/stats"><span class="lbl flicker">${I.flame}سلسلة الأيام</span>
-          ${(() => { const n = store.streak(); return `<span><span class="big-num" data-countup="${n}">${n}</span><span class="unit">${streakUnit(n)}</span></span>`; })()}</a>
-        <a class="card stat-card" href="#/stats"><span class="lbl">${I.star}استغفار اليوم</span>
-          <span><span class="big-num" data-countup="${d.i}">${fmt(d.i)}</span><span class="unit">مرة</span></span></a>
-      </div>
-      <a class="tasbeeh-link" href="#/tasbeeh">
-        <span class="mini-star">${I.octa}<span style="position:relative">${TARGETS[s.tasbeeh.ti]}</span></span>
-        <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">السبحة الذكية</b>
-        <span style="font-size:13px;color:var(--hero-muted)">انقر في أي مكان · اهتزاز عند كل ${TARGETS[s.tasbeeh.ti]}</span></span>
-        <span style="color:var(--gold);display:flex">${I.left.replace('<svg', '<svg width="20" height="20"')}</span>
-      </a>
-      ${quranCard()}
-      <a class="card stat-card garden-card" href="#/garden" style="flex-direction:row;align-items:center;gap:14px">
-        <span class="now-icon" style="background:var(--ok-soft);color:var(--primary)">${I.palm}</span>
-        <span style="flex:1;display:flex;flex-direction:column;gap:2px"><b style="font-size:15px">حديقتك في الجنة</b>
-        <span class="muted" style="font-size:13px">${X.palms() ? `${fmt(X.palms())} نخلة · سبحان الله العظيم وبحمده` : 'ازرع أول نخلة بـ«سبحان الله العظيم وبحمده»'}</span></span>
-        ${I.left.replace('<svg', '<svg width="20" height="20"')}</a>
-      ${circleCard}
     </main>`;
   },
   mount(root) {
@@ -939,7 +943,7 @@ const Stats = {
         <div class="setting"><span class="lbl">مسح كل البيانات<small>العدّادات والسلاسل والإعدادات</small></span>
           <button class="btn ghost sm" data-act="wipe">مسح</button></div>
       </section>
-      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 2.0 · يعمل بدون إنترنت<br>المصحف: مصحف المدينة النبوية بخط مجمع الملك فهد (QCF4) · نص الآيات: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
+      <p class="muted" style="text-align:center;font-size:12px;margin:0">أذكاري · الإصدار 2.1 · يعمل بدون إنترنت<br>المصحف: مصحف المدينة النبوية بخط مجمع الملك فهد (QCF4) · نص الآيات: الرسم العثماني برواية حفص (QuranEnc) · التفسير الميسّر: مجمع الملك فهد · الصوت: EveryAyah عبر Islamic Network</p>
     </main>`;
   },
   mount(root, params) {
