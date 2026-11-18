@@ -702,6 +702,10 @@ body.khushu{--rc-bad:#E07A6B;--rc-bad-bg:rgba(224,122,107,.14);--rc-bar:#21463F;
 .rc-text{font-family:'Amiri Quran',var(--quran);font-size:calc(22px * var(--fs));line-height:2.3;text-align:justify;margin:0;color:var(--ink)}
 .rc-sura{font-size:13px;font-weight:600;text-align:center;color:var(--gold-ink);border:1px solid var(--gold);border-radius:12px;padding:3px 0;margin:6px 0 4px}
 .rc-basmala{font-family:'Amiri Quran',var(--quran);text-align:center;font-size:calc(19px * var(--fs));color:var(--muted);margin-bottom:2px}
+.rc-page .mw.rc-out{opacity:.35}
+.rc-chips{display:flex;gap:8px;flex-wrap:wrap}
+.rc-chip{padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);font-size:13px;color:var(--ink-2,var(--ink));text-decoration:none}
+.rc-chip.on{background:var(--gold);border-color:var(--gold);color:#1e2a24;font-weight:700}
 .rw{transition:color .25s,background-color .25s;border-radius:6px}
 .rw.h{color:transparent;background:linear-gradient(var(--rc-bar),var(--rc-bar)) center/100% 7px no-repeat;user-select:none}
 .rw.cur{background:rgba(217,178,106,.18) linear-gradient(var(--gold),var(--gold)) center/100% 2px no-repeat;box-shadow:0 0 0 1px var(--gold) inset}

@@ -54,9 +54,31 @@ function pageTitle(st) {
 
 /* ---------- session state ---------- */
 const R = { manual: false, key: 0, st: null, phase: 'ready', t0: 0, spent: 0, alert: null, lastTxt: '', pass: false, when: '' };
-function reset(p) {
-  const [a, b] = pageRange(p);
-  R.key = p; R.st = E.newState(E.buildWords(Q.qdata().TEXT, a, b, Q.surahAyah));
+// s = optional surah: recite only that surah's verses on the page (e.g. Taha starting mid-page)
+function rangeFor(p, s) {
+  let [a, b] = pageRange(p);
+  if (s) { const m = Q.surahMeta(s); a = Math.max(a, m.start); b = Math.min(b, m.start + m.count); }
+  return a < b ? [a, b] : pageRange(p);
+}
+// keep the surah only when the page holds that surah and also something else
+function surahOn(p, s) {
+  if (!s || s < 1 || s > 114) return 0;
+  const [a, b] = pageRange(p), m = Q.surahMeta(s);
+  const lo = Math.max(a, m.start), hi = Math.min(b, m.start + m.count);
+  return lo < hi && (lo > a || hi < b) ? s : 0;
+}
+// a page with more than one surah: let the user pick which part to recite
+function surahChips(p) {
+  const [a, b] = pageRange(p), ss = [];
+  for (let g = a; g < b; g++) { const x = Q.surahAyah(g).s; if (!ss.includes(x)) ss.push(x); }
+  if (ss.length < 2) return '';
+  const cur = R.s || 0;
+  const chip = (s, label) => `<a class="rc-chip ${cur === s ? 'on' : ''}" href="#/recite?p=${p}${s ? `&s=${s}` : ''}&fresh=1">${label}</a>`;
+  return `<div class="rc-chips">${ss.map(s => chip(s, Q.surahMeta(s).name)).join('')}${chip(0, 'الصفحة كلها')}</div>`;
+}
+function reset(p, s) {
+  const [a, b] = rangeFor(p, s);
+  R.key = p; R.s = s || 0; R.st = E.newState(E.buildWords(Q.qdata().TEXT, a, b, Q.surahAyah));
   R.phase = 'ready'; R.t0 = 0; R.spent = 0; R.alert = null; R.lastTxt = ''; R.pass = false; R.when = ''; R.manual = false;
 }
 
@@ -91,12 +113,13 @@ export const Recite = {
     return withAll(() => {
       const I = ctx.I;
       let p = +params.get('p');
-      const s = +params.get('s');
+      let s = +params.get('s');
       if (!p && s >= 1 && s <= 114) p = pageOf(Q.surahMeta(s).start);
       if (!p || p < 1 || p > 604) return pickerHTML();
-      if (R.key !== p || !R.st || params.get('fresh')) {
-        reset(p);
-        if (params.get('fresh')) try { history.replaceState(null, '', `#/recite?p=${p}`); } catch (e) {}
+      s = surahOn(p, s);
+      if (R.key !== p || (R.s || 0) !== s || !R.st || params.get('fresh')) {
+        reset(p, s);
+        if (params.get('fresh')) try { history.replaceState(null, '', `#/recite?p=${p}${s ? `&s=${s}` : ''}`); } catch (e) {}
       }
       if (R.phase === 'result') return resultHTML(p);
       const st = R.st;
@@ -106,6 +129,7 @@ export const Recite = {
         <span class="muted" style="font-size:12px">${pageTitle(st)}</span></div>
         <button class="icon-btn" data-act="restart" aria-label="أعد من الأول">${I.reset}</button></header>
       <div class="pad rc-top">
+        ${surahChips(p)}
         <div class="rc-mist" data-el="mist"></div>
         <div class="progress rc-prog"><span data-el="prog"></span></div>
       </div>
@@ -150,6 +174,8 @@ export const Recite = {
         (el.dataset.kind === 'w' ? b.w : b.e).push(el);
       });
       wordEls = st.words.map(() => []); amEls = [];
+      const inSession = new Set(st.words.map(w => w.g));
+      Object.entries(byG).forEach(([g, b]) => { if (!inSession.has(+g)) [...b.w, ...b.e].forEach(el => el.classList.add('rc-out')); });
       const byVerse = {};
       st.words.forEach((w, k) => { (byVerse[w.g] || (byVerse[w.g] = [])).push(k); });
       Object.entries(byVerse).forEach(([g, ks]) => {
@@ -335,7 +361,7 @@ export const Recite = {
     });
     root.querySelector('[data-act="voice-again"]')?.addEventListener('click', () => { R.manual = false; ctx.render(); });
     root.querySelector('[data-act="restart"]').addEventListener('click', () => {
-      stopRec(); Q.stopPlayer(); reset(R.key); ctx.render(); window.scrollTo(0, 0);
+      stopRec(); Q.stopPlayer(); reset(R.key, R.s); ctx.render(); window.scrollTo(0, 0);
     });
 
     const wait = $('[data-el="wait"]');
@@ -426,13 +452,13 @@ function resultHTML(p) {
     <div class="rc-btns">
       <button class="btn ghost" data-act="again">أعد الصفحة</button>
       ${R.pass
-        ? (p < 604 ? `<a class="btn" href="#/recite?p=${p + 1}">الصفحة ${p + 1} ←</a>` : `<a class="btn" href="#/quran">زاوية التحفيظ</a>`)
+        ? (p < 604 ? `<a class="btn" href="#/recite?p=${p + 1}${surahOn(p + 1, R.s) ? `&s=${R.s}` : ''}&fresh=1">الصفحة ${p + 1} ←</a>` : `<a class="btn" href="#/quran">زاوية التحفيظ</a>`)
         : `<a class="btn" href="#/learn?s=${firstBad.s}&a=${firstBad.a}&next=seqlearn">احفظ الصفحة</a>`}
     </div>
   </main>`;
 }
 function mountResult(root) {
-  root.querySelector('[data-act="again"]').addEventListener('click', () => { reset(R.key); ctx.render(); window.scrollTo(0, 0); });
+  root.querySelector('[data-act="again"]').addEventListener('click', () => { reset(R.key, R.s); ctx.render(); window.scrollTo(0, 0); });
   if (R.pass) {
     const medal = root.querySelector('.rc-medal');
     setTimeout(() => { try { FX.burstAt(medal, { n: 40, power: 8 }); } catch (e) {} }, 250);
@@ -479,6 +505,7 @@ function mountPicker(root) {
   root.querySelector('[data-act="go"]').addEventListener('click', () => {
     const p = Math.round(+rp.value);
     if (!(p >= 1 && p <= 604)) return ctx.toast('اكتب رقم صفحة من 1 لـ 604');
-    location.hash = `#/recite?p=${p}&fresh=1`;
+    const s = rs.value && surahOn(p, +rs.value);
+    location.hash = `#/recite?p=${p}${s ? `&s=${s}` : ''}&fresh=1`;
   });
 }

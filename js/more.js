@@ -533,7 +533,7 @@ export const Reader = {
           <button data-a="tafsir">${ctx.I.book}<span>التفسير</span></button>
           <button data-a="listen">${ctx.I.vol}<span>استمع</span></button>
           <a href="#/learn?s=${v.s}&a=${v.a}&next=seqlearn">${ctx.I.quran || ctx.I.book}<span>احفظ من هون</span></a>
-          <a href="#/recite?p=${p}&fresh=1">${ctx.I.mic}<span>سمّع الصفحة</span></a>
+          <a href="#/recite?p=${p}&s=${v.s}&fresh=1">${ctx.I.mic}<span>سمّع ${v.m.name} بهالصفحة</span></a>
         </div>`, 'الآية');
       sh.el.querySelector('[data-a="tafsir"]').addEventListener('click', () => { sh.close(); showTafsir(g, `سورة ${v.m.name} · الآية ${v.a}`); });
       sh.el.querySelector('[data-a="listen"]').addEventListener('click', ev => {

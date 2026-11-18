@@ -15,7 +15,7 @@ import * as OFF from './offline.js';
 import * as BK from './backup.js';
 import * as SQ from './sadaqa.js';
 
-const APP_VERSION = '2.1.3';
+const APP_VERSION = '2.1.4';
 
 /* progress % that never hides a real contribution: 0.03% instead of 0% */
 function pctOf(total, goal) {
