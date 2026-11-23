@@ -1,4 +1,4 @@
-// صدقة جارية عن أرواح شهداء آل الحولي — card, duas for the deceased, counters, gifted dhikr, names sky.
+// صدقة جارية لشهداء آل الحولي — card, duas for the deceased, counters, gifted dhikr, names sky.
 // Cloud data is shared totals only (stats/sadaqa: duas, dhikr · stats/shuhada: n0…n29 per name); nothing personal.
 import * as store from './store.js';
 import { init as fbInit, isConfigured } from './challenge.js';
@@ -145,7 +145,7 @@ export function cardHTML() {
   <section class="sq-card" data-el="sadaqa">
     <svg class="sq-bg" viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="#D9B26A" stroke-width="3"><rect x="20" y="20" width="60" height="60"/><rect x="20" y="20" width="60" height="60" transform="rotate(45 50 50)"/></g></svg>
     <span class="sq-k">صدقة جارية</span>
-    <h3>عن أرواح شهداء آل الحولي</h3>
+    <h3>لشهداء آل الحولي</h3>
     ${who ? `<button class="sq-today" data-act="sq-today">
       <span class="sq-av">${initial(who.name)}</span>
       <span style="flex:1;text-align:start;display:flex;flex-direction:column"><small>ندعو اليوم لـ</small><b>${ctx.esc(who.name)}</b><small data-el="sq-today-n">${cnt != null ? `دعا ${P.lh} ${arNum(cnt)} شخص · ${P.rh}` : P.rh}</small></span>
