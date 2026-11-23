@@ -115,6 +115,7 @@ async function bump(fields, which = 'a') {
 /** Count dhikr gifted to them (only when the user chose to dedicate it). */
 export function add(n = 1) {
   const q = S();
+  return; // gifting option removed from the home screen
   if (!q.gift) return;
   q.pending = (q.pending || 0) + n;
   q.myGift = (q.myGift || 0) + n;
@@ -146,11 +147,6 @@ export function cardHTML() {
     <svg class="sq-bg" viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="#D9B26A" stroke-width="3"><rect x="20" y="20" width="60" height="60"/><rect x="20" y="20" width="60" height="60" transform="rotate(45 50 50)"/></g></svg>
     ${friday ? `<a class="sq-fri" href="#/read?s=18">${I.book}<span>اليوم جمعة: اقرأ سورة الكهف وأهدِ ثوابها لهم</span></a>` : ''}
     <div class="sq-stats" data-el="sq-stats">${statsHTML(c)}</div>
-    <label class="sq-gift"><input type="checkbox" data-el="sq-gift" ${q.gift ? 'checked' : ''}><span>نويت أهدي أجر ذكري وتسبيحي لهم</span></label>
-    <div class="sq-acts">
-      <a class="sq-g" style="flex:1" href="#/shuhada">كل الأسماء</a><button class="sq-g" style="flex:1" data-act="sq-all">ادعُ لهم جميعاً</button>
-      <button class="sq-g sq-ic" data-act="sq-share" aria-label="شارك">${I.share}</button>
-    </div>
   </section>`;
 }
 function statsHTML(c) {
@@ -167,13 +163,13 @@ export function bindCard(root) {
     if (who && tn && c.per) tn.textContent = `دعا ${pr(who).lh} ${arNum(c.per[`n${idxOf(who)}`] || 0)} شخص · ${pr(who).rh}`;
   };
   refresh().then(paint);
-  el.querySelector('[data-el="sq-gift"]').addEventListener('change', e => {
+  el.querySelector('[data-el="sq-gift"]')?.addEventListener('change', e => {
     S().gift = e.target.checked; store.save();
     ctx.toast(e.target.checked ? 'تقبّل الله منك 🤍 ذكرك من هلأ مُهدى لهم' : 'تمام، وقّفنا الإهداء');
   });
   el.querySelectorAll('[data-act="sq-today"]').forEach(b => b.addEventListener('click', () => openDua(nameOfDay(), paint)));
   el.querySelector('[data-act="sq-all"]')?.addEventListener('click', () => openDua(null, paint));
-  el.querySelector('[data-act="sq-share"]').addEventListener('click', () => share(null));
+  el.querySelector('[data-act="sq-share"]')?.addEventListener('click', () => share(null));
 }
 
 /* ---------- dua sheet: swipe through the duas ---------- */

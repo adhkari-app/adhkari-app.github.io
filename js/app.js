@@ -15,7 +15,7 @@ import * as OFF from './offline.js';
 import * as BK from './backup.js';
 import * as SQ from './sadaqa.js';
 
-const APP_VERSION = '2.1.8';
+const APP_VERSION = '2.1.9';
 
 /* progress % that never hides a real contribution: 0.03% instead of 0% */
 function pctOf(total, goal) {
@@ -263,7 +263,6 @@ const Home = {
     </header>
     <main class="pad overlap stack stagger">
       <section class="card raised stack" aria-live="polite">${nowCard}</section>
-      ${SQ.cardHTML()}
       ${(() => { try {
         const np = P.nextPrayer(now), mins = Math.max(0, Math.round((np.time - now) / 60000));
         const left = mins >= 60 ? `${Math.floor(mins / 60)} س ${mins % 60} د` : `${mins} دقيقة`;
