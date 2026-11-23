@@ -144,17 +144,11 @@ export function cardHTML() {
   return `
   <section class="sq-card" data-el="sadaqa">
     <svg class="sq-bg" viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="#D9B26A" stroke-width="3"><rect x="20" y="20" width="60" height="60"/><rect x="20" y="20" width="60" height="60" transform="rotate(45 50 50)"/></g></svg>
-    ${who ? `<button class="sq-today" data-act="sq-today">
-      <span class="sq-av">${initial(who.name)}</span>
-      <span style="flex:1;text-align:start;display:flex;flex-direction:column"><b>${ctx.esc(who.name)}</b><small data-el="sq-today-n">${cnt != null ? `دعا ${P.lh} ${arNum(cnt)} شخص · ${P.rh}` : P.rh}</small></span>
-    </button>
-    <button class="sq-b" data-act="sq-today">ادعُ ${P.lh} 🤍</button>`
-    : `<p>كل ذكر بتقوله بهالتطبيق، وكل آية بتحفظها، أجرها إلهم إن شاء الله. لا تنساهم من دعائك 🤍</p>`}
     ${friday ? `<a class="sq-fri" href="#/read?s=18">${I.book}<span>اليوم جمعة: اقرأ سورة الكهف وأهدِ ثوابها لهم</span></a>` : ''}
     <div class="sq-stats" data-el="sq-stats">${statsHTML(c)}</div>
     <label class="sq-gift"><input type="checkbox" data-el="sq-gift" ${q.gift ? 'checked' : ''}><span>نويت أهدي أجر ذكري وتسبيحي لهم</span></label>
     <div class="sq-acts">
-      ${who ? `<a class="sq-g" style="flex:1" href="#/shuhada">كل الأسماء</a><button class="sq-g" style="flex:1" data-act="sq-all">ادعُ لهم جميعاً</button>` : `<button class="sq-b" data-act="sq-all">ادعُ لهم</button><a class="sq-g" href="#/shuhada">الأسماء</a>`}
+      <a class="sq-g" style="flex:1" href="#/shuhada">كل الأسماء</a><button class="sq-g" style="flex:1" data-act="sq-all">ادعُ لهم جميعاً</button>
       <button class="sq-g sq-ic" data-act="sq-share" aria-label="شارك">${I.share}</button>
     </div>
   </section>`;
